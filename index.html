@@ -240,7 +240,9 @@ function getLevel(n) {
 
 function getWeekStart(d) {
   const dt = d ? new Date(d) : new Date();
-  dt.setDate(dt.getDate() - dt.getDay());
+  /*dt.setDate(dt.getDate() - dt.getDay());*/
+  const day = dt.getDay();
+  dt.setDate(dt.getDate() - (day === 0 ? 6 : day - 1));
   return toKey(dt);
 }
 
@@ -271,7 +273,9 @@ function updateGoalRow(type, current) {
       behindMsg = hoursLeft > 0 ? ` · ${(needed / (hoursLeft + minsLeft/60)).toFixed(1)}/hr needed` : "";
     }
   } else if (type === "weekly") {
-    const dayOfWeek = now.getDay(); // 0=Sun
+    // const dayOfWeek = now.getDay(); // 0=Sun
+    // const daysLeft  = 6 - dayOfWeek;
+    const dayOfWeek = (now.getDay() + 6) % 7; // Mon=0, Sun=6
     const daysLeft  = 6 - dayOfWeek;
     timeLeft = daysLeft === 0 ? "last day of week" : `${daysLeft} day${daysLeft!==1?"s":""} left this week`;
     if (target > 0 && current < target && daysLeft > 0) {
