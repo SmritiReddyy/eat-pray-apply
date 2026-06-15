@@ -187,16 +187,26 @@
   <div class="rings-wrap">
     <div class="rings-svg-wrap">
       <svg width="220" height="220" viewBox="0 0 220 220">
-        <!-- monthly track + fill (outer, r=95) -->
+        <defs>
+          <!-- shadow on the lap cap so it reads as "on top" of the ring -->
+          <filter id="cap-shadow" x="-30%" y="-30%" width="160%" height="160%">
+            <feDropShadow dx="-1.5" dy="0" stdDeviation="2" flood-color="#00000088"/>
+          </filter>
+        </defs>
+        <!-- monthly track + fill (outer, r=95, C≈597) -->
         <circle class="ring-track" cx="110" cy="110" r="95" stroke="#3ddc8422" stroke-width="16"/>
-        <circle class="ring-fill"  cx="110" cy="110" r="95" stroke="#3ddc84"   stroke-width="16" id="ring-monthly" stroke-dasharray="597" stroke-dashoffset="597"/>
-        <!-- weekly track + fill (middle, r=72) -->
+        <circle class="ring-fill"  cx="110" cy="110" r="95" stroke="#3ddc84" stroke-width="16" id="ring-monthly" stroke-dasharray="597" stroke-dashoffset="597"/>
+        <!-- weekly track + fill (middle, r=72, C≈452) -->
         <circle class="ring-track" cx="110" cy="110" r="72" stroke="#ffd60a22" stroke-width="16"/>
-        <circle class="ring-fill"  cx="110" cy="110" r="72" stroke="#ffd60a"   stroke-width="16" id="ring-weekly"  stroke-dasharray="452" stroke-dashoffset="452"/>
-        <!-- daily track + fill (inner, r=49) -->
+        <circle class="ring-fill"  cx="110" cy="110" r="72" stroke="#ffd60a"  stroke-width="16" id="ring-weekly"  stroke-dasharray="452" stroke-dashoffset="452"/>
+        <!-- daily track + fill (inner, r=49, C≈308) -->
         <circle class="ring-track" cx="110" cy="110" r="49" stroke="#ff453a22" stroke-width="16"/>
-        <circle class="ring-fill"  cx="110" cy="110" r="49" stroke="#ff453a"   stroke-width="16" id="ring-daily"   stroke-dasharray="308" stroke-dashoffset="308"/>
-        <!-- hover zones (transparent, wide stroke for easy hover) -->
+        <circle class="ring-fill"  cx="110" cy="110" r="49" stroke="#ff453a"  stroke-width="16" id="ring-daily"   stroke-dasharray="308" stroke-dashoffset="308"/>
+        <!-- lap caps — short arc at 12-o'clock that appears when ring >= 100%, rendered on top -->
+        <circle class="ring-fill" cx="110" cy="110" r="95" stroke="#3ddc84" stroke-width="16" id="ring-monthly-cap" stroke-dasharray="50 547" stroke-dashoffset="0" filter="url(#cap-shadow)" style="display:none"/>
+        <circle class="ring-fill" cx="110" cy="110" r="72" stroke="#ffd60a" stroke-width="16" id="ring-weekly-cap"  stroke-dasharray="38 414" stroke-dashoffset="0" filter="url(#cap-shadow)" style="display:none"/>
+        <circle class="ring-fill" cx="110" cy="110" r="49" stroke="#ff453a" stroke-width="16" id="ring-daily-cap"   stroke-dasharray="26 282" stroke-dashoffset="0" filter="url(#cap-shadow)" style="display:none"/>
+        <!-- hover zones -->
         <circle class="ring-hover" cx="110" cy="110" r="95" onmouseenter="showRingTip('monthly')" onmouseleave="hideRingTip()"/>
         <circle class="ring-hover" cx="110" cy="110" r="72" onmouseenter="showRingTip('weekly')"  onmouseleave="hideRingTip()"/>
         <circle class="ring-hover" cx="110" cy="110" r="49" onmouseenter="showRingTip('daily')"   onmouseleave="hideRingTip()"/>
@@ -345,7 +355,7 @@ const SEED = {
   "2026-05-22":11,"2026-05-23":1,"2026-05-24":2,
   "2026-05-25":15,"2026-05-26":16,"2026-05-27":11,"2026-05-28":2,
   "2026-05-29":11,
-  "2026-06-01":11,"2026-06-10":16,"2026-06-13":19,"2026-06-14":12
+  "2026-06-01":11,"2026-06-10":16,"2026-06-13":19,"2026-06-14":12,"2026-06-15":16
 };
 
 const STORE_KEY = "smriti_job_tracker_v1";
@@ -535,6 +545,8 @@ function setRing(type, pct) {
   const c = RING_C[type];
   const offset = c - Math.min(1, pct / 100) * c;
   document.getElementById("ring-"+type).style.strokeDashoffset = offset;
+  const cap = document.getElementById("ring-"+type+"-cap");
+  if (cap) cap.style.display = pct >= 100 ? "" : "none";
 }
 
 function timeLeftMsg(type, now) {
