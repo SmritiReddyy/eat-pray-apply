@@ -203,9 +203,14 @@
         <circle class="ring-track" cx="110" cy="110" r="49" stroke="#ff453a22" stroke-width="16"/>
         <circle class="ring-fill"  cx="110" cy="110" r="49" stroke="#ff453a"  stroke-width="16" id="ring-daily"   stroke-dasharray="308" stroke-dashoffset="308"/>
         <!-- lap caps — full-circumference arcs that fill based on overflow past 100%, rendered on top -->
-        <circle fill="none" stroke-linecap="round" cx="110" cy="110" r="95" stroke="#3ddc84" stroke-width="16" id="ring-monthly-cap" stroke-dasharray="597" stroke-dashoffset="597" transform="rotate(-90 110 110)" filter="url(#cap-shadow)" visibility="hidden" style="transition:stroke-dashoffset 0.6s cubic-bezier(.4,0,.2,1)"/>
-        <circle fill="none" stroke-linecap="round" cx="110" cy="110" r="72" stroke="#ffd60a" stroke-width="16" id="ring-weekly-cap"  stroke-dasharray="452" stroke-dashoffset="452" transform="rotate(-90 110 110)" filter="url(#cap-shadow)" visibility="hidden" style="transition:stroke-dashoffset 0.6s cubic-bezier(.4,0,.2,1)"/>
-        <circle fill="none" stroke-linecap="round" cx="110" cy="110" r="49" stroke="#ff453a" stroke-width="16" id="ring-daily-cap"   stroke-dasharray="308" stroke-dashoffset="308" transform="rotate(-90 110 110)" filter="url(#cap-shadow)" visibility="hidden" style="transition:stroke-dashoffset 0.6s cubic-bezier(.4,0,.2,1)"/>
+        <!-- cap arcs: butt linecap so no rounded protrusion at the hidden start end -->
+        <circle fill="none" stroke-linecap="butt" cx="110" cy="110" r="95" stroke="#3ddc84" stroke-width="16" id="ring-monthly-cap" stroke-dasharray="597" stroke-dashoffset="597" transform="rotate(-90 110 110)" visibility="hidden" style="transition:stroke-dashoffset 0.6s cubic-bezier(.4,0,.2,1)"/>
+        <circle fill="none" stroke-linecap="butt" cx="110" cy="110" r="72" stroke="#ffd60a" stroke-width="16" id="ring-weekly-cap"  stroke-dasharray="452" stroke-dashoffset="452" transform="rotate(-90 110 110)" visibility="hidden" style="transition:stroke-dashoffset 0.6s cubic-bezier(.4,0,.2,1)"/>
+        <circle fill="none" stroke-linecap="butt" cx="110" cy="110" r="49" stroke="#ff453a" stroke-width="16" id="ring-daily-cap"   stroke-dasharray="308" stroke-dashoffset="308" transform="rotate(-90 110 110)" visibility="hidden" style="transition:stroke-dashoffset 0.6s cubic-bezier(.4,0,.2,1)"/>
+        <!-- tip dots: round dot placed only at the leading end of each cap arc -->
+        <circle id="ring-monthly-tip" r="8" fill="#3ddc84" visibility="hidden" filter="url(#cap-shadow)"/>
+        <circle id="ring-weekly-tip"  r="8" fill="#ffd60a" visibility="hidden" filter="url(#cap-shadow)"/>
+        <circle id="ring-daily-tip"   r="8" fill="#ff453a" visibility="hidden" filter="url(#cap-shadow)"/>
         <!-- hover zones -->
         <circle class="ring-hover" cx="110" cy="110" r="95" onmouseenter="showRingTip('monthly')" onmouseleave="hideRingTip()"/>
         <circle class="ring-hover" cx="110" cy="110" r="72" onmouseenter="showRingTip('weekly')"  onmouseleave="hideRingTip()"/>
@@ -545,21 +550,31 @@ function setRing(type, pct) {
   const c = RING_C[type];
   const offset = c - Math.min(1, pct / 100) * c;
   document.getElementById("ring-"+type).style.strokeDashoffset = offset;
+  const RING_R = { daily: 49, weekly: 72, monthly: 95 };
   const cap = document.getElementById("ring-"+type+"-cap");
+  const tip = document.getElementById("ring-"+type+"-tip");
   if (cap) {
     if (pct >= 100) {
       const overflowLen = Math.min(1, (pct / 100 - 1)) * c;
-      // Tuck the arc start under the main ring's rounded endpoint so it isn't visible.
-      // Rotate cap clockwise by half-stroke-width in arc-degrees, extend arc by same amount.
-      const TUCK = 8; // half of stroke-width=16
+      // Tuck arc start under main ring's rounded endpoint (butt cap on arc, dot at tip only).
+      const TUCK = 8; // half stroke-width — hides the flat start under the main ring's end cap
       const tuckDeg = TUCK / c * 360;
       cap.setAttribute("transform", `rotate(${-90 + tuckDeg} 110 110)`);
       cap.style.strokeDashoffset = c - (overflowLen + TUCK);
       cap.setAttribute("visibility", "visible");
+      // Place the round tip dot at the leading end of the arc
+      if (tip) {
+        const r = RING_R[type];
+        const tipAngle = (-90 + tuckDeg + (overflowLen + TUCK) / c * 360) * Math.PI / 180;
+        tip.setAttribute("cx", 110 + r * Math.cos(tipAngle));
+        tip.setAttribute("cy", 110 + r * Math.sin(tipAngle));
+        tip.setAttribute("visibility", "visible");
+      }
     } else {
       cap.setAttribute("transform", "rotate(-90 110 110)");
       cap.style.strokeDashoffset = c;
       cap.setAttribute("visibility", "hidden");
+      if (tip) tip.setAttribute("visibility", "hidden");
     }
   }
 }
