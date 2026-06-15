@@ -63,23 +63,34 @@
     .week-summary { font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); display: flex; gap: 20px; flex-wrap: wrap; }
     .week-summary strong { color: var(--accent); }
 
-    /* Goal bar */
-    .goal-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
-    .goal-row { display: flex; align-items: center; gap: 10px; }
-    .goal-tag { font-family: var(--font-mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; width: 52px; flex-shrink: 0; }
-    .goal-nums { font-family: var(--font-mono); font-size: 12px; color: var(--text); width: 72px; flex-shrink: 0; }
-    .goal-nums span { color: var(--accent); }
-    .goal-bar-wrap { flex: 1; }
-    .progress-track { background: var(--surface2); border-radius: 99px; height: 5px; overflow: hidden; }
-    .progress-fill { height: 100%; border-radius: 99px; background: var(--accent); transition: width 0.4s ease; }
-    .progress-fill.done { background: var(--l5); }
-    .progress-fill.warn { background: #f0a500; }
-    .goal-pct { font-family: var(--font-mono); font-size: 10px; color: var(--muted); width: 32px; text-align: right; flex-shrink: 0; }
+    /* Activity rings */
+    :root {
+      --ring-daily: #ff453a;
+      --ring-weekly: #ffd60a;
+      --ring-monthly: #3ddc84;
+    }
+    .rings-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
+    .rings-svg-wrap { position: relative; flex-shrink: 0; }
+    .rings-svg-wrap svg { display: block; }
+    .ring-track { fill: none; stroke-linecap: round; }
+    .ring-fill  { fill: none; stroke-linecap: round; transform-origin: 110px 110px; transform: rotate(-90deg); transition: stroke-dashoffset 0.6s cubic-bezier(.4,0,.2,1); }
+    .rings-legend { display: flex; flex-direction: column; gap: 14px; flex: 1; min-width: 200px; }
+    .ring-leg { display: flex; flex-direction: column; gap: 4px; }
+    .ring-leg-top { display: flex; align-items: center; gap: 8px; }
+    .ring-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .ring-leg-label { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+    .ring-leg-nums { font-family: var(--font-mono); font-size: 18px; font-weight: 500; line-height: 1; }
+    .ring-leg-msg { font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
+    .ring-inputs { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
     .goal-input { width: 52px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 4px; color: var(--text); font-family: var(--font-mono); font-size: 11px; padding: 3px 6px; outline: none; text-align: center; }
     .goal-input:focus { border-color: var(--accent); }
     .goal-set-btn { font-family: var(--font-mono); font-size: 10px; padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border2); background: transparent; color: var(--muted); cursor: pointer; transition: color 0.15s; flex-shrink: 0; }
     .goal-set-btn:hover { color: var(--text); border-color: var(--accent2); }
-    .goal-msg { font-family: var(--font-mono); font-size: 10px; color: var(--muted); flex: 2; min-width: 160px; }
+    /* Range pills */
+    .range-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+    .range-pill { font-family: var(--font-mono); font-size: 10px; padding: 3px 10px; border-radius: 99px; border: 1px solid var(--border2); background: transparent; color: var(--muted); cursor: pointer; transition: all 0.15s; }
+    .range-pill:hover { color: var(--text); }
+    .range-pill.active { background: var(--accent4); border-color: var(--accent2); color: var(--accent); }
     /* Streak */
     .streak-bar { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 18px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
     .streak-item { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 12px; }
@@ -130,10 +141,20 @@
     .section-title { font-family: var(--font-mono); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 16px; }
     .chart-container { position: relative; width: 100%; height: 180px; }
 
+    /* Tabs */
+    .tab-nav { max-width: 860px; margin: 0 auto 2rem; display: flex; gap: 2px; border-bottom: 1px solid var(--border); }
+    .tab-btn { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.06em; color: var(--muted); background: transparent; border: none; padding: 8px 18px 10px; cursor: pointer; position: relative; transition: color 0.15s; }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--accent); }
+    .tab-btn.active::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 2px; background: var(--accent); border-radius: 2px 2px 0 0; }
+    .tab-pane { display: none; flex-direction: column; gap: 1.5rem; }
+    .tab-pane.active { display: flex; }
+
     @media (max-width: 600px) {
       .stats { grid-template-columns: repeat(2, 1fr); }
       header { flex-direction: column; gap: 4px; }
       .week-label { width: 70px; }
+      .tab-btn { padding: 8px 12px 10px; font-size: 11px; }
     }
   </style>
 </head>
@@ -144,47 +165,78 @@
   <span id="header-date"></span>
 </header>
 
+<nav class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('log')">log</button>
+  <button class="tab-btn" onclick="switchTab('history')">history</button>
+  <button class="tab-btn" onclick="switchTab('stats')">stats</button>
+</nav>
+
 <main class="main">
 
-  <div class="stats">
-    <div class="stat"><div class="stat-label">Total apps</div><div class="stat-value accent" id="s-total">0</div></div>
-    <div class="stat"><div class="stat-label">Active days</div><div class="stat-value" id="s-days">0</div><div class="stat-sub" id="s-avg"></div></div>
-    <div class="stat"><div class="stat-label">Best day</div><div class="stat-value" id="s-best">0</div></div>
-    <div class="stat"><div class="stat-label">This week</div><div class="stat-value" id="s-week">0</div><div class="stat-sub" id="s-bestweek"></div></div>
-    <div class="stat"><div class="stat-label">Weeks on goal</div><div class="stat-value accent" id="s-weekgoal">—</div><div class="stat-sub" id="s-weekgoal-rate"></div></div>
-    <div class="stat"><div class="stat-label">Monthly pace</div><div class="stat-value" id="s-pace">—</div><div class="stat-sub" id="s-pace-sub"></div></div>
-    <div class="stat"><div class="stat-label">Best week</div><div class="stat-value" id="s-bestweekval">0</div></div>
-    <div class="stat"><div class="stat-label">Consistency</div><div class="stat-value" id="s-consistency">—</div><div class="stat-sub" id="s-consistency-sub"></div></div>
-  </div>
+  <!-- ── Tab: Log ── -->
+  <div class="tab-pane active" id="pane-log">
 
-  <!-- Goal tracker -->
-  <div class="goal-wrap">
-    <div class="goal-row">
-      <div class="goal-tag">daily</div>
-      <div class="goal-nums" id="goal-nums-daily"><span>0</span> / —</div>
-      <div class="goal-bar-wrap"><div class="progress-track"><div class="progress-fill" id="progress-daily" style="width:0%"></div></div></div>
-      <div class="goal-pct" id="goal-pct-daily"></div>
-      <div class="goal-msg" id="goal-msg-daily"></div>
-      <input type="number" class="goal-input" id="goal-input-daily" min="1" max="999" placeholder="—" />
-      <button class="goal-set-btn" onclick="saveGoal('daily')">set</button>
+  <!-- Activity rings -->
+  <div class="rings-wrap">
+    <div class="rings-svg-wrap">
+      <svg width="220" height="220" viewBox="0 0 220 220">
+        <!-- monthly track + fill (outer, r=95) -->
+        <circle class="ring-track" cx="110" cy="110" r="95" stroke="#3ddc8422" stroke-width="16"/>
+        <circle class="ring-fill"  cx="110" cy="110" r="95" stroke="#3ddc84"   stroke-width="16" id="ring-monthly" stroke-dasharray="597" stroke-dashoffset="597"/>
+        <!-- weekly track + fill (middle, r=72) -->
+        <circle class="ring-track" cx="110" cy="110" r="72" stroke="#ffd60a22" stroke-width="16"/>
+        <circle class="ring-fill"  cx="110" cy="110" r="72" stroke="#ffd60a"   stroke-width="16" id="ring-weekly"  stroke-dasharray="452" stroke-dashoffset="452"/>
+        <!-- daily track + fill (inner, r=49) -->
+        <circle class="ring-track" cx="110" cy="110" r="49" stroke="#ff453a22" stroke-width="16"/>
+        <circle class="ring-fill"  cx="110" cy="110" r="49" stroke="#ff453a"   stroke-width="16" id="ring-daily"   stroke-dasharray="308" stroke-dashoffset="308"/>
+        <!-- center text -->
+        <text x="110" y="104" text-anchor="middle" font-family="'DM Mono',monospace" font-size="11" fill="#6b7a6d" letter-spacing="1">TODAY</text>
+        <text x="110" y="124" text-anchor="middle" font-family="'DM Mono',monospace" font-size="22" font-weight="500" fill="#e8ede9" id="ring-center-val">0</text>
+      </svg>
     </div>
-    <div class="goal-row">
-      <div class="goal-tag">weekly</div>
-      <div class="goal-nums" id="goal-nums-weekly"><span>0</span> / —</div>
-      <div class="goal-bar-wrap"><div class="progress-track"><div class="progress-fill" id="progress-weekly" style="width:0%"></div></div></div>
-      <div class="goal-pct" id="goal-pct-weekly"></div>
-      <div class="goal-msg" id="goal-msg-weekly"></div>
-      <input type="number" class="goal-input" id="goal-input-weekly" min="1" max="999" placeholder="—" />
-      <button class="goal-set-btn" onclick="saveGoal('weekly')">set</button>
-    </div>
-    <div class="goal-row">
-      <div class="goal-tag">monthly</div>
-      <div class="goal-nums" id="goal-nums-monthly"><span>0</span> / —</div>
-      <div class="goal-bar-wrap"><div class="progress-track"><div class="progress-fill" id="progress-monthly" style="width:0%"></div></div></div>
-      <div class="goal-pct" id="goal-pct-monthly"></div>
-      <div class="goal-msg" id="goal-msg-monthly"></div>
-      <input type="number" class="goal-input" id="goal-input-monthly" min="1" max="999" placeholder="—" />
-      <button class="goal-set-btn" onclick="saveGoal('monthly')">set</button>
+    <div class="rings-legend">
+      <!-- daily -->
+      <div class="ring-leg">
+        <div class="ring-leg-top">
+          <div class="ring-dot" style="background:#ff453a"></div>
+          <span class="ring-leg-label">Daily</span>
+          <span class="ring-leg-nums" style="color:#ff453a" id="rleg-daily-nums">0 / —</span>
+          <span style="font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-left:4px" id="rleg-daily-pct"></span>
+        </div>
+        <div class="ring-leg-msg" id="rleg-daily-msg"></div>
+        <div class="ring-inputs">
+          <input type="number" class="goal-input" id="goal-input-daily" min="1" max="999" placeholder="set goal" />
+          <button class="goal-set-btn" onclick="saveGoal('daily')">set</button>
+        </div>
+      </div>
+      <!-- weekly -->
+      <div class="ring-leg">
+        <div class="ring-leg-top">
+          <div class="ring-dot" style="background:#ffd60a"></div>
+          <span class="ring-leg-label">Weekly</span>
+          <span class="ring-leg-nums" style="color:#ffd60a" id="rleg-weekly-nums">0 / —</span>
+          <span style="font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-left:4px" id="rleg-weekly-pct"></span>
+        </div>
+        <div class="ring-leg-msg" id="rleg-weekly-msg"></div>
+        <div class="ring-inputs">
+          <input type="number" class="goal-input" id="goal-input-weekly" min="1" max="999" placeholder="set goal" />
+          <button class="goal-set-btn" onclick="saveGoal('weekly')">set</button>
+        </div>
+      </div>
+      <!-- monthly -->
+      <div class="ring-leg">
+        <div class="ring-leg-top">
+          <div class="ring-dot" style="background:#3ddc84"></div>
+          <span class="ring-leg-label">Monthly</span>
+          <span class="ring-leg-nums" style="color:#3ddc84" id="rleg-monthly-nums">0 / —</span>
+          <span style="font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-left:4px" id="rleg-monthly-pct"></span>
+        </div>
+        <div class="ring-leg-msg" id="rleg-monthly-msg"></div>
+        <div class="ring-inputs">
+          <input type="number" class="goal-input" id="goal-input-monthly" min="1" max="999" placeholder="set goal" />
+          <button class="goal-set-btn" onclick="saveGoal('monthly')">set</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -202,12 +254,50 @@
     <span class="toast" id="toast"></span>
   </div>
 
+  <!-- quick summary strip on log tab -->
+  <div class="stats" style="grid-template-columns:repeat(4,1fr)">
+    <div class="stat"><div class="stat-label">Total apps</div><div class="stat-value accent" id="s-total">0</div></div>
+    <div class="stat"><div class="stat-label">This week</div><div class="stat-value" id="s-week">0</div><div class="stat-sub" id="s-trend" style="font-size:11px;margin-top:3px"></div></div>
+    <div class="stat"><div class="stat-label">Best day</div><div class="stat-value" id="s-best">0</div></div>
+    <div class="stat"><div class="stat-label">Best week</div><div class="stat-value" id="s-bestweekval">0</div></div>
+  </div>
+
+  </div><!-- end pane-log -->
+
+  <!-- ── Tab: History ── -->
+  <div class="tab-pane" id="pane-history">
+
   <div class="grid-wrap" id="grid-wrap"></div>
 
   <div class="week-history">
-    <div class="section-title">Weekly goal history</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+      <div class="section-title" style="margin-bottom:0">Weekly goal history</div>
+      <div class="range-pills">
+        <button class="range-pill" data-range="1"  onclick="setHistoryRange(1)">1w</button>
+        <button class="range-pill active" data-range="6"  onclick="setHistoryRange(6)">6w</button>
+        <button class="range-pill" data-range="13" onclick="setHistoryRange(13)">3m</button>
+        <button class="range-pill" data-range="26" onclick="setHistoryRange(26)">6m</button>
+        <button class="range-pill" data-range="99" onclick="setHistoryRange(99)">all</button>
+      </div>
+    </div>
     <div class="week-rows" id="week-history-rows"></div>
     <div class="week-summary" id="week-summary"></div>
+  </div>
+
+  </div><!-- end pane-history -->
+
+  <!-- ── Tab: Stats ── -->
+  <div class="tab-pane" id="pane-stats">
+
+  <div class="stats">
+    <div class="stat"><div class="stat-label">Total apps</div><div class="stat-value accent" id="ss-total">0</div></div>
+    <div class="stat"><div class="stat-label">Active days</div><div class="stat-value" id="s-days">0</div><div class="stat-sub" id="s-avg"></div></div>
+    <div class="stat"><div class="stat-label">Monthly pace</div><div class="stat-value" id="s-pace">—</div><div class="stat-sub" id="s-pace-sub"></div></div>
+    <div class="stat"><div class="stat-label">This week</div><div class="stat-value" id="ss-week">0</div><div class="stat-sub" id="s-bestweek"></div></div>
+    <div class="stat"><div class="stat-label">Weeks on goal</div><div class="stat-value accent" id="s-weekgoal">—</div><div class="stat-sub" id="s-weekgoal-rate"></div></div>
+    <div class="stat"><div class="stat-label">Best week</div><div class="stat-value" id="ss-bestweekval">0</div></div>
+    <div class="stat"><div class="stat-label">Consistency</div><div class="stat-value" id="s-consistency">—</div><div class="stat-sub" id="s-consistency-sub"></div></div>
+    <div class="stat"><div class="stat-label">Best day</div><div class="stat-value" id="ss-best">0</div></div>
   </div>
 
   <div class="chart-wrap">
@@ -223,6 +313,8 @@
       <canvas id="weekly-chart" role="img" aria-label="Bar chart showing weekly job application totals"></canvas>
     </div>
   </div>
+
+  </div><!-- end pane-stats -->
 
 </main>
 
@@ -406,79 +498,81 @@ function getWeekStart(d) {
   return toKey(dt);
 }
 
-/* ── Goal ── */
+/* ── Goal / Rings ── */
+const RING_C = { daily: 308, weekly: 452, monthly: 597 };
+
 function saveGoal(type) {
   const v = parseInt(document.getElementById("goal-input-"+type).value);
   if (!v || v < 1) return;
   goal[type] = v;
   saveGoalStore();
   updateGoal();
+  buildWeeklyGoalHistory();
   showToast(type + " goal saved");
 }
 
-function updateGoalRow(type, current) {
-  const target = goal[type] || 0;
-  const pct = target > 0 ? Math.min(100, Math.round(current / target * 100)) : 0;
-  const now = new Date();
+function setRing(type, pct) {
+  const c = RING_C[type];
+  const offset = c - Math.min(1, pct / 100) * c;
+  document.getElementById("ring-"+type).style.strokeDashoffset = offset;
+}
 
-  // time remaining
-  let timeLeft = "";
-  let behindMsg = "";
+function timeLeftMsg(type, now) {
   if (type === "daily") {
-    const hoursLeft = 23 - now.getHours();
-    const minsLeft  = 59 - now.getMinutes();
-    timeLeft = hoursLeft > 0 ? `${hoursLeft}h ${minsLeft}m left today` : `${minsLeft}m left today`;
-    if (target > 0 && current < target) {
-      const needed = target - current;
-      behindMsg = hoursLeft > 0 ? ` · ${(needed / (hoursLeft + minsLeft/60)).toFixed(1)}/hr needed` : "";
-    }
+    const h = 23 - now.getHours(), m = 59 - now.getMinutes();
+    return h > 0 ? `${h}h ${m}m left` : `${m}m left`;
   } else if (type === "weekly") {
-    // const dayOfWeek = now.getDay(); // 0=Sun
-    // const daysLeft  = 6 - dayOfWeek;
-    const dayOfWeek = (now.getDay() + 6) % 7; // Mon=0, Sun=6
-    const daysLeft  = 6 - dayOfWeek;
-    timeLeft = daysLeft === 0 ? "last day of week" : `${daysLeft} day${daysLeft!==1?"s":""} left this week`;
-    if (target > 0 && current < target && daysLeft > 0) {
-      const needed = target - current;
-      behindMsg = ` · ${Math.ceil(needed / (daysLeft + 1))}/day needed`;
-    }
+    const dow = (now.getDay() + 6) % 7;
+    const d = 6 - dow;
+    return d === 0 ? "last day" : `${d}d left`;
   } else {
-    const lastDay   = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
-    const daysLeft  = lastDay - now.getDate();
-    timeLeft = daysLeft === 0 ? "last day of month" : `${daysLeft} day${daysLeft!==1?"s":""} left this month`;
-    if (target > 0 && current < target && daysLeft > 0) {
-      const needed = target - current;
-      behindMsg = ` · ${Math.ceil(needed / (daysLeft + 1))}/day needed`;
-    }
+    const last = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+    const d = last - now.getDate();
+    return d === 0 ? "last day" : `${d}d left`;
   }
-
-  document.getElementById("goal-input-"+type).value = target || "";
-  document.getElementById("goal-nums-"+type).innerHTML = `<span>${current}</span> / ${target || "—"}`;
-  document.getElementById("goal-pct-"+type).textContent = target > 0 ? pct+"%" : "";
-
-  const fill = document.getElementById("progress-"+type);
-  fill.style.width = pct + "%";
-  fill.className = "progress-fill" + (pct >= 100 ? " done" : pct < 40 ? " warn" : "");
-
-  let msg = "";
-  if (!target)        { msg = "no target set"; }
-  else if (pct >= 100){ msg = "🎉 goal hit!"; }
-  else {
-    const left = target - current;
-    msg = `${left} left · ${timeLeft}${behindMsg}`;
-  }
-  document.getElementById("goal-msg-"+type).textContent = msg;
 }
 
 function updateGoal() {
-  const dailyCurrent = data[today()] || 0;
+  const now = new Date();
+  const dailyCurrent   = data[today()] || 0;
   const ws = getWeekStart();
-  const weeklyCurrent = Object.entries(data).filter(([k,v]) => k >= ws && v > 0).reduce((a,[,v])=>a+v, 0);
+  const weeklyCurrent  = Object.entries(data).filter(([k,v]) => k >= ws && v > 0).reduce((a,[,v])=>a+v, 0);
   const prefix = today().slice(0,7);
   const monthlyCurrent = Object.entries(data).filter(([k,v]) => k.startsWith(prefix) && v > 0).reduce((a,[,v])=>a+v, 0);
-  updateGoalRow("daily", dailyCurrent);
-  updateGoalRow("weekly", weeklyCurrent);
-  updateGoalRow("monthly", monthlyCurrent);
+
+  document.getElementById("ring-center-val").textContent = dailyCurrent;
+
+  [["daily", dailyCurrent], ["weekly", weeklyCurrent], ["monthly", monthlyCurrent]].forEach(([type, current]) => {
+    const target = goal[type] || 0;
+    const pct    = target > 0 ? Math.min(100, Math.round(current / target * 100)) : 0;
+    setRing(type, pct);
+
+    document.getElementById("goal-input-"+type).value = target || "";
+    document.getElementById("rleg-"+type+"-nums").textContent = `${current} / ${target || "—"}`;
+    document.getElementById("rleg-"+type+"-pct").textContent  = target > 0 ? pct+"%" : "";
+
+    let msg = "";
+    if (!target) { msg = "no target set"; }
+    else if (pct >= 100) { msg = "🎉 goal hit!"; }
+    else {
+      const left = target - current;
+      const tl   = timeLeftMsg(type, now);
+      let behind = "";
+      if (type === "daily") {
+        const h = 23 - now.getHours(), m = 59 - now.getMinutes();
+        if (h > 0) behind = ` · ${(left/(h+m/60)).toFixed(1)}/hr`;
+      } else if (type === "weekly") {
+        const dow = (now.getDay()+6)%7, d = 6-dow;
+        if (d > 0) behind = ` · ${Math.ceil(left/(d+1))}/day`;
+      } else {
+        const last = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+        const d = last - now.getDate();
+        if (d > 0) behind = ` · ${Math.ceil(left/(d+1))}/day`;
+      }
+      msg = `${left} left · ${tl}${behind}`;
+    }
+    document.getElementById("rleg-"+type+"-msg").textContent = msg;
+  });
 }
 
 /* ── Stats ── */
@@ -508,24 +602,41 @@ function getAllWeekMondays() {
 }
 
 function updateStats() {
+  const now = new Date();
   const vals = Object.values(data).filter(v => v > 0);
   const total = vals.reduce((a,b)=>a+b,0);
+  const bestDay = vals.length ? Math.max(...vals) : 0;
   document.getElementById("s-total").textContent = total;
   document.getElementById("s-days").textContent  = vals.length;
-  document.getElementById("s-best").textContent  = vals.length ? Math.max(...vals) : 0;
+  document.getElementById("s-best").textContent  = bestDay;
+  document.getElementById("ss-total").textContent = total;
+  document.getElementById("ss-best").textContent  = bestDay;
 
-  const avgPerDay = vals.length ? (total / vals.length).toFixed(1) : "—";
+  const avgPerDay = vals.length ? (total / vals.length).toFixed(1) : 0;
   document.getElementById("s-avg").textContent = vals.length ? `avg ${avgPerDay}/day` : "";
 
   const ws = getWeekStart();
   const weekSum = Object.entries(data).filter(([k,v]) => k >= ws && v > 0).reduce((a,[,v])=>a+v, 0);
-  document.getElementById("s-week").textContent = weekSum;
+  document.getElementById("s-week").textContent  = weekSum;
+  document.getElementById("ss-week").textContent = weekSum;
+
+  // Trend arrow: compare this week's daily pace vs overall avg
+  const daysIntoWeek = Math.max(1, (now.getDay() + 6) % 7 + 1);
+  const thisWeekPace = weekSum / daysIntoWeek;
+  const trendEl = document.getElementById("s-trend");
+  if (trendEl && vals.length > 3 && avgPerDay > 0) {
+    const ratio = thisWeekPace / avgPerDay;
+    if (ratio >= 1.1)       { trendEl.textContent = "↑ above avg"; trendEl.style.color = "var(--accent)"; }
+    else if (ratio <= 0.9)  { trendEl.textContent = "↓ below avg"; trendEl.style.color = "#f0a500"; }
+    else                    { trendEl.textContent = "→ on avg";    trendEl.style.color = "var(--muted)"; }
+  } else if (trendEl) { trendEl.textContent = ""; }
 
   // best week
   const mondays = getAllWeekMondays();
   let bestWeek = 0;
   mondays.forEach(m => { const t = getWeekTotal(m); if (t > bestWeek) bestWeek = t; });
-  document.getElementById("s-bestweekval").textContent = bestWeek;
+  document.getElementById("s-bestweekval").textContent  = bestWeek;
+  document.getElementById("ss-bestweekval").textContent = bestWeek;
 
   // this week vs last week
   const lastWs = new Date(getWeekStart());
@@ -555,7 +666,6 @@ function updateStats() {
   }
 
   // monthly pace projection
-  const now = new Date();
   const dayOfMonth = now.getDate();
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const prefix = today().slice(0, 7);
@@ -588,22 +698,34 @@ function updateStats() {
 }
 
 /* ── Weekly goal history ── */
+let historyRange = 6;
+
+function setHistoryRange(n) {
+  historyRange = n;
+  document.querySelectorAll(".range-pill").forEach(el => {
+    el.classList.toggle("active", parseInt(el.dataset.range) === n);
+  });
+  buildWeeklyGoalHistory();
+}
+
 function buildWeeklyGoalHistory() {
   const wGoal = goal.weekly || 0;
   const todayMonday = getWeekStart();
-  const rows = [];
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date(todayMonday + "T00:00:00");
-    d.setDate(d.getDate() - i * 7);
-    const monday = toKey(d);
+
+  // collect all weeks with data, going back as far as needed
+  const allMondays = getAllWeekMondays();
+  // limit to historyRange most recent (including current week)
+  const sliced = allMondays.slice(-Math.min(historyRange, allMondays.length));
+
+  const rows = sliced.map(monday => {
+    const d = new Date(monday + "T00:00:00");
     const sunday = new Date(d); sunday.setDate(sunday.getDate() + 6);
-    const sunKey = toKey(sunday);
     const total = getWeekTotal(monday);
     const isCurrent = monday === todayMonday;
     const label = d.toLocaleDateString("en-US", {month:"short", day:"numeric"}) +
       " – " + sunday.toLocaleDateString("en-US", {month:"short", day:"numeric"});
-    rows.push({ monday, label, total, isCurrent });
-  }
+    return { monday, label, total, isCurrent };
+  });
 
   const maxTotal = Math.max(...rows.map(r => r.total), wGoal || 1, 1);
   const completedRows = rows.filter(r => !r.isCurrent);
@@ -613,8 +735,8 @@ function buildWeeklyGoalHistory() {
     const pct = Math.min(100, Math.round(r.total / maxTotal * 100));
     const isHit = wGoal > 0 && r.total >= wGoal;
     const badgeClass = r.isCurrent ? "cur" : isHit ? "hit" : "miss";
-    const badgeText = r.isCurrent ? "now" : isHit ? "hit" : "miss";
-    const fillClass = isHit ? " hit" : "";
+    const badgeText  = r.isCurrent ? "now" : isHit ? "hit" : "miss";
+    const fillClass  = isHit ? " hit" : "";
     const goalMarker = wGoal > 0 ? `<div style="position:absolute;top:-2px;bottom:-2px;left:${Math.min(100,Math.round(wGoal/maxTotal*100))}%;width:1px;background:var(--border2)"></div>` : "";
     return `<div class="week-row">
       <div class="week-label">${r.label}</div>
@@ -633,19 +755,14 @@ function buildWeeklyGoalHistory() {
 
   let summaryHtml = "";
   if (wGoal > 0) {
-    const total11 = completedRows.length;
-    summaryHtml += `<span><strong>${hitCount}</strong> of ${total11} completed weeks hit the weekly goal of <strong>${wGoal}</strong></span>`;
-    if (total11 > 0) {
-      const rate = Math.round(hitCount / total11 * 100);
-      summaryHtml += `<span>goal hit rate: <strong>${rate}%</strong></span>`;
-    }
-    // streak of consecutive hitting weeks (most recent)
+    const n = completedRows.length;
+    summaryHtml += `<span><strong>${hitCount}</strong> of ${n} weeks hit goal of <strong>${wGoal}</strong></span>`;
+    if (n > 0) summaryHtml += `<span>hit rate: <strong>${Math.round(hitCount/n*100)}%</strong></span>`;
     let wStreak = 0;
-    for (let i = completedRows.length - 1; i >= 0; i--) {
-      if (completedRows[i].total >= wGoal) wStreak++;
-      else break;
+    for (let i = completedRows.length-1; i >= 0; i--) {
+      if (completedRows[i].total >= wGoal) wStreak++; else break;
     }
-    if (wStreak > 0) summaryHtml += `<span>current weekly streak: <strong>${wStreak} wk${wStreak !== 1 ? "s" : ""}</strong></span>`;
+    if (wStreak > 0) summaryHtml += `<span>weekly streak: <strong>${wStreak}wk</strong></span>`;
   } else {
     summaryHtml = `<span>set a weekly goal to track hit/miss</span>`;
   }
@@ -914,6 +1031,16 @@ function exportCSV() {
   a.click();
   URL.revokeObjectURL(url);
   showToast("csv exported");
+}
+
+/* ── Tabs ── */
+function switchTab(name) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('pane-' + name).classList.add('active');
+  document.querySelector(`.tab-btn[onclick="switchTab('${name}')"]`).classList.add('active');
+  // rebuild charts when switching to stats so canvas renders at correct size
+  if (name === 'stats') { buildMonthlyChart(); buildWeeklyChart(); }
 }
 
 /* ── Init ── */
