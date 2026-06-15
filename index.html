@@ -44,6 +44,24 @@
     .stat-label { font-family: var(--font-mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
     .stat-value { font-family: var(--font-mono); font-size: 26px; font-weight: 500; color: var(--text); line-height: 1; }
     .stat-value.accent { color: var(--accent); }
+    .stat-sub { font-family: var(--font-mono); font-size: 10px; color: var(--muted); margin-top: 5px; }
+
+    /* Weekly goal history */
+    .week-history { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+    .week-rows { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+    .week-row { display: flex; align-items: center; gap: 10px; }
+    .week-label { font-family: var(--font-mono); font-size: 10px; color: var(--muted); width: 90px; flex-shrink: 0; }
+    .week-bar-wrap { flex: 1; }
+    .week-bar-track { background: var(--surface2); border-radius: 99px; height: 4px; overflow: hidden; }
+    .week-bar-fill { height: 100%; border-radius: 99px; background: var(--accent2); transition: width 0.4s ease; }
+    .week-bar-fill.hit { background: var(--accent); }
+    .week-count { font-family: var(--font-mono); font-size: 11px; color: var(--text); width: 30px; text-align: right; flex-shrink: 0; }
+    .week-badge { font-family: var(--font-mono); font-size: 9px; font-weight: 500; padding: 2px 6px; border-radius: 3px; flex-shrink: 0; width: 36px; text-align: center; }
+    .week-badge.hit { background: var(--accent4); color: var(--accent); border: 1px solid var(--accent3); }
+    .week-badge.miss { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+    .week-badge.cur { background: var(--surface2); color: var(--muted); border: 1px solid var(--border2); font-style: italic; }
+    .week-summary { font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); display: flex; gap: 20px; flex-wrap: wrap; }
+    .week-summary strong { color: var(--accent); }
 
     /* Goal bar */
     .goal-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
@@ -112,6 +130,7 @@
     @media (max-width: 600px) {
       .stats { grid-template-columns: repeat(2, 1fr); }
       header { flex-direction: column; gap: 4px; }
+      .week-label { width: 70px; }
     }
   </style>
 </head>
@@ -126,9 +145,13 @@
 
   <div class="stats">
     <div class="stat"><div class="stat-label">Total apps</div><div class="stat-value accent" id="s-total">0</div></div>
-    <div class="stat"><div class="stat-label">Active days</div><div class="stat-value" id="s-days">0</div></div>
+    <div class="stat"><div class="stat-label">Active days</div><div class="stat-value" id="s-days">0</div><div class="stat-sub" id="s-avg"></div></div>
     <div class="stat"><div class="stat-label">Best day</div><div class="stat-value" id="s-best">0</div></div>
-    <div class="stat"><div class="stat-label">This week</div><div class="stat-value" id="s-week">0</div></div>
+    <div class="stat"><div class="stat-label">This week</div><div class="stat-value" id="s-week">0</div><div class="stat-sub" id="s-bestweek"></div></div>
+    <div class="stat"><div class="stat-label">Weeks on goal</div><div class="stat-value accent" id="s-weekgoal">—</div><div class="stat-sub" id="s-weekgoal-rate"></div></div>
+    <div class="stat"><div class="stat-label">Monthly pace</div><div class="stat-value" id="s-pace">—</div><div class="stat-sub" id="s-pace-sub"></div></div>
+    <div class="stat"><div class="stat-label">Best week</div><div class="stat-value" id="s-bestweekval">0</div></div>
+    <div class="stat"><div class="stat-label">Consistency</div><div class="stat-value" id="s-consistency">—</div><div class="stat-sub" id="s-consistency-sub"></div></div>
   </div>
 
   <!-- Goal tracker -->
@@ -160,6 +183,12 @@
       <input type="number" class="goal-input" id="goal-input-monthly" min="1" max="999" placeholder="—" />
       <button class="goal-set-btn" onclick="saveGoal('monthly')">set</button>
     </div>
+  </div>
+
+  <div class="week-history">
+    <div class="section-title">Weekly goal history</div>
+    <div class="week-rows" id="week-history-rows"></div>
+    <div class="week-summary" id="week-summary"></div>
   </div>
 
   <div class="streak-bar" id="streak-bar"></div>
@@ -322,14 +351,174 @@ function updateGoal() {
 }
 
 /* ── Stats ── */
+function getWeekTotal(mondayKey) {
+  let total = 0;
+  const start = new Date(mondayKey + "T00:00:00");
+  for (let d = 0; d < 7; d++) {
+    const day = new Date(start);
+    day.setDate(day.getDate() + d);
+    total += data[toKey(day)] || 0;
+  }
+  return total;
+}
+
+function getAllWeekMondays() {
+  const keys = Object.keys(data).filter(k => data[k] > 0).sort();
+  if (!keys.length) return [];
+  const start = new Date(getWeekStart(keys[0]));
+  const todayMonday = new Date(getWeekStart());
+  const mondays = [];
+  const cur = new Date(start);
+  while (cur <= todayMonday) {
+    mondays.push(toKey(new Date(cur)));
+    cur.setDate(cur.getDate() + 7);
+  }
+  return mondays;
+}
+
 function updateStats() {
   const vals = Object.values(data).filter(v => v > 0);
-  document.getElementById("s-total").textContent = vals.reduce((a,b)=>a+b,0);
+  const total = vals.reduce((a,b)=>a+b,0);
+  document.getElementById("s-total").textContent = total;
   document.getElementById("s-days").textContent  = vals.length;
   document.getElementById("s-best").textContent  = vals.length ? Math.max(...vals) : 0;
+
+  const avgPerDay = vals.length ? (total / vals.length).toFixed(1) : "—";
+  document.getElementById("s-avg").textContent = vals.length ? `avg ${avgPerDay}/day` : "";
+
   const ws = getWeekStart();
   const weekSum = Object.entries(data).filter(([k,v]) => k >= ws && v > 0).reduce((a,[,v])=>a+v, 0);
   document.getElementById("s-week").textContent = weekSum;
+
+  // best week
+  const mondays = getAllWeekMondays();
+  let bestWeek = 0;
+  mondays.forEach(m => { const t = getWeekTotal(m); if (t > bestWeek) bestWeek = t; });
+  document.getElementById("s-bestweekval").textContent = bestWeek;
+
+  // this week vs last week
+  const lastWs = new Date(getWeekStart());
+  lastWs.setDate(lastWs.getDate() - 7);
+  const lastWeekSum = getWeekTotal(toKey(lastWs));
+  if (lastWeekSum > 0) {
+    const diff = weekSum - lastWeekSum;
+    document.getElementById("s-bestweek").textContent = diff > 0 ? `↑ ${diff} vs last wk` : diff < 0 ? `↓ ${Math.abs(diff)} vs last wk` : "same as last wk";
+  } else {
+    document.getElementById("s-bestweek").textContent = "";
+  }
+
+  // weeks on goal
+  const wGoal = goal.weekly || 0;
+  const completedMondays = mondays.filter(m => m < ws); // exclude current partial week
+  if (wGoal > 0 && completedMondays.length > 0) {
+    const hitWeeks = completedMondays.filter(m => getWeekTotal(m) >= wGoal).length;
+    document.getElementById("s-weekgoal").textContent = hitWeeks;
+    const rate = Math.round(hitWeeks / completedMondays.length * 100);
+    document.getElementById("s-weekgoal-rate").textContent = `${rate}% of ${completedMondays.length} wk${completedMondays.length !== 1 ? "s" : ""}`;
+  } else if (wGoal === 0) {
+    document.getElementById("s-weekgoal").textContent = "—";
+    document.getElementById("s-weekgoal-rate").textContent = "set weekly goal";
+  } else {
+    document.getElementById("s-weekgoal").textContent = "—";
+    document.getElementById("s-weekgoal-rate").textContent = "not enough data";
+  }
+
+  // monthly pace projection
+  const now = new Date();
+  const dayOfMonth = now.getDate();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const prefix = today().slice(0, 7);
+  const monthSoFar = Object.entries(data).filter(([k,v]) => k.startsWith(prefix) && v > 0).reduce((a,[,v])=>a+v, 0);
+  if (monthSoFar > 0 && dayOfMonth > 0) {
+    const projected = Math.round(monthSoFar / dayOfMonth * daysInMonth);
+    document.getElementById("s-pace").textContent = projected;
+    const mGoal = goal.monthly || 0;
+    if (mGoal > 0) {
+      const onTrack = projected >= mGoal;
+      document.getElementById("s-pace-sub").textContent = onTrack ? "on track ✓" : `goal: ${mGoal}`;
+    } else {
+      document.getElementById("s-pace-sub").textContent = "proj. this month";
+    }
+  } else {
+    document.getElementById("s-pace").textContent = "—";
+    document.getElementById("s-pace-sub").textContent = "proj. this month";
+  }
+
+  // consistency: % of weeks with at least 1 application
+  if (mondays.length > 1) {
+    const activeWeeks = completedMondays.filter(m => getWeekTotal(m) > 0).length;
+    const consistencyPct = Math.round(activeWeeks / completedMondays.length * 100);
+    document.getElementById("s-consistency").textContent = consistencyPct + "%";
+    document.getElementById("s-consistency-sub").textContent = `${activeWeeks}/${completedMondays.length} wks active`;
+  } else {
+    document.getElementById("s-consistency").textContent = "—";
+    document.getElementById("s-consistency-sub").textContent = "";
+  }
+}
+
+/* ── Weekly goal history ── */
+function buildWeeklyGoalHistory() {
+  const wGoal = goal.weekly || 0;
+  const todayMonday = getWeekStart();
+  const rows = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(todayMonday + "T00:00:00");
+    d.setDate(d.getDate() - i * 7);
+    const monday = toKey(d);
+    const sunday = new Date(d); sunday.setDate(sunday.getDate() + 6);
+    const sunKey = toKey(sunday);
+    const total = getWeekTotal(monday);
+    const isCurrent = monday === todayMonday;
+    const label = d.toLocaleDateString("en-US", {month:"short", day:"numeric"}) +
+      " – " + sunday.toLocaleDateString("en-US", {month:"short", day:"numeric"});
+    rows.push({ monday, label, total, isCurrent });
+  }
+
+  const maxTotal = Math.max(...rows.map(r => r.total), wGoal || 1, 1);
+  const completedRows = rows.filter(r => !r.isCurrent);
+  const hitCount = wGoal > 0 ? completedRows.filter(r => r.total >= wGoal).length : 0;
+
+  const rowsHtml = rows.map(r => {
+    const pct = Math.min(100, Math.round(r.total / maxTotal * 100));
+    const isHit = wGoal > 0 && r.total >= wGoal;
+    const badgeClass = r.isCurrent ? "cur" : isHit ? "hit" : "miss";
+    const badgeText = r.isCurrent ? "now" : isHit ? "hit" : "miss";
+    const fillClass = isHit ? " hit" : "";
+    const goalMarker = wGoal > 0 ? `<div style="position:absolute;top:-2px;bottom:-2px;left:${Math.min(100,Math.round(wGoal/maxTotal*100))}%;width:1px;background:var(--border2)"></div>` : "";
+    return `<div class="week-row">
+      <div class="week-label">${r.label}</div>
+      <div class="week-bar-wrap">
+        <div class="week-bar-track" style="position:relative">
+          <div class="week-bar-fill${fillClass}" style="width:${pct}%"></div>
+          ${goalMarker}
+        </div>
+      </div>
+      <div class="week-count">${r.total || ""}</div>
+      <div class="week-badge ${badgeClass}">${badgeText}</div>
+    </div>`;
+  }).join("");
+
+  document.getElementById("week-history-rows").innerHTML = rowsHtml;
+
+  let summaryHtml = "";
+  if (wGoal > 0) {
+    const total11 = completedRows.length;
+    summaryHtml += `<span><strong>${hitCount}</strong> of ${total11} completed weeks hit the weekly goal of <strong>${wGoal}</strong></span>`;
+    if (total11 > 0) {
+      const rate = Math.round(hitCount / total11 * 100);
+      summaryHtml += `<span>goal hit rate: <strong>${rate}%</strong></span>`;
+    }
+    // streak of consecutive hitting weeks (most recent)
+    let wStreak = 0;
+    for (let i = completedRows.length - 1; i >= 0; i--) {
+      if (completedRows[i].total >= wGoal) wStreak++;
+      else break;
+    }
+    if (wStreak > 0) summaryHtml += `<span>current weekly streak: <strong>${wStreak} wk${wStreak !== 1 ? "s" : ""}</strong></span>`;
+  } else {
+    summaryHtml = `<span>set a weekly goal to track hit/miss</span>`;
+  }
+  document.getElementById("week-summary").innerHTML = summaryHtml;
 }
 
 /* ── Streak ── */
@@ -352,6 +541,21 @@ function calcStreaks() {
 function updateStreak() {
   const { current, longest } = calcStreaks();
   const isActive = current > 0;
+
+  // week-over-week trend
+  const ws = getWeekStart();
+  const lastWs = new Date(ws + "T00:00:00");
+  lastWs.setDate(lastWs.getDate() - 7);
+  const thisWeekTotal = getWeekTotal(ws);
+  const lastWeekTotal = getWeekTotal(toKey(lastWs));
+  let trendHtml = "";
+  if (lastWeekTotal > 0) {
+    const diff = thisWeekTotal - lastWeekTotal;
+    const pct = Math.round(Math.abs(diff) / lastWeekTotal * 100);
+    if (diff > 0)      trendHtml = `<div style="width:1px;height:20px;background:var(--border);margin:0 4px"></div><div class="streak-item"><span style="color:var(--accent);font-family:var(--font-mono);font-size:12px">↑ ${pct}% vs last week</span></div>`;
+    else if (diff < 0) trendHtml = `<div style="width:1px;height:20px;background:var(--border);margin:0 4px"></div><div class="streak-item"><span style="color:#f0a500;font-family:var(--font-mono);font-size:12px">↓ ${pct}% vs last week</span></div>`;
+    else               trendHtml = `<div style="width:1px;height:20px;background:var(--border);margin:0 4px"></div><div class="streak-item"><span style="color:var(--muted);font-family:var(--font-mono);font-size:12px">= same as last week</span></div>`;
+  }
   document.getElementById("streak-bar").innerHTML = `
     <div class="streak-item">
       <div class="streak-dot${isActive?'':' cold'}"></div>
@@ -367,7 +571,8 @@ function updateStreak() {
     <div style="width:1px;height:20px;background:var(--border);margin:0 4px"></div>
     <div class="streak-item">
       <span class="streak-label">${isActive ? '🔥 keep going' : 'apply today to start a streak'}</span>
-    </div>`;
+    </div>
+    ${trendHtml}`;
 }
 
 /* ── Grid ── */
@@ -520,6 +725,7 @@ function render() {
   updateStats();
   updateStreak();
   updateGoal();
+  buildWeeklyGoalHistory();
   buildGrid();
   buildMonthlyChart();
   buildWeeklyChart();
