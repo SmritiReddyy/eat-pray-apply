@@ -15,8 +15,8 @@
       --surface2: #1b1e1c;
       --border: rgba(255,255,255,0.07);
       --border2: rgba(255,255,255,0.13);
-      --text: #e8ede9;
-      --muted: #6b7a6d;
+      --text: #f0f5f1;
+      --muted: #96a898;
       --accent: #3ddc84;
       --accent2: #1a9e55;
       --accent3: #0d5c30;
@@ -74,17 +74,24 @@
     .rings-svg-wrap svg { display: block; }
     .ring-track { fill: none; stroke-linecap: round; }
     .ring-fill  { fill: none; stroke-linecap: round; transform-origin: 110px 110px; transform: rotate(-90deg); transition: stroke-dashoffset 0.6s cubic-bezier(.4,0,.2,1); }
-    .rings-legend { display: flex; flex-direction: column; gap: 14px; flex: 1; min-width: 200px; }
-    .ring-leg { display: flex; flex-direction: column; gap: 4px; }
-    .ring-leg-top { display: flex; align-items: center; gap: 8px; }
-    .ring-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-    .ring-leg-label { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
-    .ring-leg-nums { font-family: var(--font-mono); font-size: 18px; font-weight: 500; line-height: 1; }
-    .ring-leg-msg { font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
-    .ring-inputs { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
-    .goal-input { width: 52px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 4px; color: var(--text); font-family: var(--font-mono); font-size: 11px; padding: 3px 6px; outline: none; text-align: center; }
+    .ring-hover { fill: none; stroke: transparent; stroke-width: 28; cursor: crosshair; transform-origin: 110px 110px; transform: rotate(-90deg); }
+    .ring-tooltip { position: absolute; background: #1e2220; border: 1px solid var(--border2); border-radius: 6px; padding: 8px 12px; font-family: var(--font-mono); font-size: 12px; color: var(--text); pointer-events: none; white-space: nowrap; opacity: 0; transition: opacity 0.15s; z-index: 20; top: 50%; transform: translateY(-50%); left: calc(100% + 12px); }
+    .ring-tooltip.visible { opacity: 1; }
+    .ring-tooltip-val { font-size: 20px; font-weight: 500; }
+    .ring-tooltip-label { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+    .ring-tooltip-msg { color: var(--muted); font-size: 10px; margin-top: 3px; }
+    .rings-legend { display: flex; flex-direction: column; gap: 10px; flex: 1; min-width: 220px; }
+    .ring-leg { display: flex; flex-direction: column; gap: 3px; }
+    .ring-leg-row { display: flex; align-items: center; gap: 8px; }
+    .ring-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .ring-leg-label { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); flex-shrink: 0; width: 46px; }
+    .ring-leg-nums { font-family: var(--font-mono); font-size: 15px; font-weight: 500; line-height: 1; }
+    .ring-leg-pct { font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
+    .ring-leg-msg { font-family: var(--font-mono); font-size: 10px; color: var(--muted); padding-left: 15px; }
+    .ring-inputs { display: flex; align-items: center; gap: 5px; margin-left: auto; }
+    .goal-input { width: 46px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 4px; color: var(--text); font-family: var(--font-mono); font-size: 11px; padding: 2px 5px; outline: none; text-align: center; }
     .goal-input:focus { border-color: var(--accent); }
-    .goal-set-btn { font-family: var(--font-mono); font-size: 10px; padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border2); background: transparent; color: var(--muted); cursor: pointer; transition: color 0.15s; flex-shrink: 0; }
+    .goal-set-btn { font-family: var(--font-mono); font-size: 10px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border2); background: transparent; color: var(--muted); cursor: pointer; transition: color 0.15s; flex-shrink: 0; }
     .goal-set-btn:hover { color: var(--text); border-color: var(--accent2); }
     /* Range pills */
     .range-pills { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -189,53 +196,62 @@
         <!-- daily track + fill (inner, r=49) -->
         <circle class="ring-track" cx="110" cy="110" r="49" stroke="#ff453a22" stroke-width="16"/>
         <circle class="ring-fill"  cx="110" cy="110" r="49" stroke="#ff453a"   stroke-width="16" id="ring-daily"   stroke-dasharray="308" stroke-dashoffset="308"/>
+        <!-- hover zones (transparent, wide stroke for easy hover) -->
+        <circle class="ring-hover" cx="110" cy="110" r="95" onmouseenter="showRingTip('monthly')" onmouseleave="hideRingTip()"/>
+        <circle class="ring-hover" cx="110" cy="110" r="72" onmouseenter="showRingTip('weekly')"  onmouseleave="hideRingTip()"/>
+        <circle class="ring-hover" cx="110" cy="110" r="49" onmouseenter="showRingTip('daily')"   onmouseleave="hideRingTip()"/>
         <!-- center text -->
-        <text x="110" y="104" text-anchor="middle" font-family="'DM Mono',monospace" font-size="11" fill="#6b7a6d" letter-spacing="1">TODAY</text>
-        <text x="110" y="124" text-anchor="middle" font-family="'DM Mono',monospace" font-size="22" font-weight="500" fill="#e8ede9" id="ring-center-val">0</text>
+        <text x="110" y="104" text-anchor="middle" font-family="'DM Mono',monospace" font-size="11" fill="#96a898" letter-spacing="1">TODAY</text>
+        <text x="110" y="124" text-anchor="middle" font-family="'DM Mono',monospace" font-size="22" font-weight="500" fill="#f0f5f1" id="ring-center-val">0</text>
       </svg>
+      <div class="ring-tooltip" id="ring-tooltip">
+        <div class="ring-tooltip-label" id="rtt-label"></div>
+        <div class="ring-tooltip-val" id="rtt-val"></div>
+        <div class="ring-tooltip-msg" id="rtt-msg"></div>
+      </div>
     </div>
     <div class="rings-legend">
       <!-- daily -->
       <div class="ring-leg">
-        <div class="ring-leg-top">
+        <div class="ring-leg-row">
           <div class="ring-dot" style="background:#ff453a"></div>
           <span class="ring-leg-label">Daily</span>
           <span class="ring-leg-nums" style="color:#ff453a" id="rleg-daily-nums">0 / —</span>
-          <span style="font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-left:4px" id="rleg-daily-pct"></span>
+          <span class="ring-leg-pct" id="rleg-daily-pct"></span>
+          <div class="ring-inputs">
+            <input type="number" class="goal-input" id="goal-input-daily" min="1" max="999" placeholder="—" />
+            <button class="goal-set-btn" onclick="saveGoal('daily')">set</button>
+          </div>
         </div>
         <div class="ring-leg-msg" id="rleg-daily-msg"></div>
-        <div class="ring-inputs">
-          <input type="number" class="goal-input" id="goal-input-daily" min="1" max="999" placeholder="set goal" />
-          <button class="goal-set-btn" onclick="saveGoal('daily')">set</button>
-        </div>
       </div>
       <!-- weekly -->
       <div class="ring-leg">
-        <div class="ring-leg-top">
+        <div class="ring-leg-row">
           <div class="ring-dot" style="background:#ffd60a"></div>
           <span class="ring-leg-label">Weekly</span>
           <span class="ring-leg-nums" style="color:#ffd60a" id="rleg-weekly-nums">0 / —</span>
-          <span style="font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-left:4px" id="rleg-weekly-pct"></span>
+          <span class="ring-leg-pct" id="rleg-weekly-pct"></span>
+          <div class="ring-inputs">
+            <input type="number" class="goal-input" id="goal-input-weekly" min="1" max="999" placeholder="—" />
+            <button class="goal-set-btn" onclick="saveGoal('weekly')">set</button>
+          </div>
         </div>
         <div class="ring-leg-msg" id="rleg-weekly-msg"></div>
-        <div class="ring-inputs">
-          <input type="number" class="goal-input" id="goal-input-weekly" min="1" max="999" placeholder="set goal" />
-          <button class="goal-set-btn" onclick="saveGoal('weekly')">set</button>
-        </div>
       </div>
       <!-- monthly -->
       <div class="ring-leg">
-        <div class="ring-leg-top">
+        <div class="ring-leg-row">
           <div class="ring-dot" style="background:#3ddc84"></div>
           <span class="ring-leg-label">Monthly</span>
           <span class="ring-leg-nums" style="color:#3ddc84" id="rleg-monthly-nums">0 / —</span>
-          <span style="font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-left:4px" id="rleg-monthly-pct"></span>
+          <span class="ring-leg-pct" id="rleg-monthly-pct"></span>
+          <div class="ring-inputs">
+            <input type="number" class="goal-input" id="goal-input-monthly" min="1" max="999" placeholder="—" />
+            <button class="goal-set-btn" onclick="saveGoal('monthly')">set</button>
+          </div>
         </div>
         <div class="ring-leg-msg" id="rleg-monthly-msg"></div>
-        <div class="ring-inputs">
-          <input type="number" class="goal-input" id="goal-input-monthly" min="1" max="999" placeholder="set goal" />
-          <button class="goal-set-btn" onclick="saveGoal('monthly')">set</button>
-        </div>
       </div>
     </div>
   </div>
@@ -572,6 +588,7 @@ function updateGoal() {
       msg = `${left} left · ${tl}${behind}`;
     }
     document.getElementById("rleg-"+type+"-msg").textContent = msg;
+    updateRingTipData(type, current, target, msg);
   });
 }
 
@@ -711,6 +728,42 @@ function setHistoryRange(n) {
 function buildWeeklyGoalHistory() {
   const wGoal = goal.weekly || 0;
   const todayMonday = getWeekStart();
+
+  // 1w = per-day view of the current week
+  if (historyRange === 1) {
+    const dayNames = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+    const dGoal = goal.daily || 0;
+    const maxVal = Math.max(dGoal || 1, ...Array.from({length:7},(_,i)=>{
+      const d=new Date(todayMonday+"T00:00:00"); d.setDate(d.getDate()+i); return data[toKey(d)]||0;
+    }), 1);
+    let rowsHtml = '';
+    const todayKey = today();
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(todayMonday+"T00:00:00"); d.setDate(d.getDate()+i);
+      const key = toKey(d);
+      const count = data[key] || 0;
+      const isFuture = key > todayKey;
+      const isToday = key === todayKey;
+      const pct = Math.min(100, Math.round(count / maxVal * 100));
+      const isHit = dGoal > 0 && count >= dGoal;
+      const fillClass = isHit ? ' hit' : '';
+      const goalMarker = dGoal > 0 ? `<div style="position:absolute;top:-2px;bottom:-2px;left:${Math.min(100,Math.round(dGoal/maxVal*100))}%;width:1px;background:var(--border2)"></div>` : '';
+      const badge = isToday ? `<div class="week-badge cur">today</div>` : isFuture ? `<div class="week-badge miss" style="opacity:0.3">—</div>` : isHit ? `<div class="week-badge hit">hit</div>` : `<div class="week-badge miss">miss</div>`;
+      rowsHtml += `<div class="week-row" style="${isFuture?'opacity:0.35':''}">
+        <div class="week-label">${dayNames[i]} ${d.toLocaleDateString("en-US",{month:"short",day:"numeric"})}</div>
+        <div class="week-bar-wrap"><div class="week-bar-track" style="position:relative"><div class="week-bar-fill${fillClass}" style="width:${pct}%"></div>${goalMarker}</div></div>
+        <div class="week-count">${count || ''}</div>
+        ${badge}
+      </div>`;
+    }
+    document.getElementById("week-history-rows").innerHTML = rowsHtml;
+    const weekTotal = Array.from({length:7},(_,i)=>{const d=new Date(todayMonday+"T00:00:00");d.setDate(d.getDate()+i);return data[toKey(d)]||0;}).reduce((a,b)=>a+b,0);
+    let summaryHtml = `<span>this week: <strong>${weekTotal}</strong> apps</span>`;
+    if (wGoal > 0) summaryHtml += `<span>weekly goal: <strong>${wGoal}</strong> · ${weekTotal>=wGoal?'<strong style="color:var(--accent)">hit 🎉</strong>':`${wGoal-weekTotal} to go`}</span>`;
+    if (dGoal > 0) summaryHtml += `<span>daily goal: <strong>${dGoal}</strong>/day</span>`;
+    document.getElementById("week-summary").innerHTML = summaryHtml;
+    return;
+  }
 
   // collect all weeks with data, going back as far as needed
   const allMondays = getAllWeekMondays();
@@ -1031,6 +1084,26 @@ function exportCSV() {
   a.click();
   URL.revokeObjectURL(url);
   showToast("csv exported");
+}
+
+/* ── Ring tooltips ── */
+let _ringTipData = {};
+function updateRingTipData(type, current, target, msg) {
+  _ringTipData[type] = { current, target, msg };
+}
+function showRingTip(type) {
+  const d = _ringTipData[type] || {};
+  const colors = { daily: '#ff453a', weekly: '#ffd60a', monthly: '#3ddc84' };
+  const tip = document.getElementById('ring-tooltip');
+  document.getElementById('rtt-label').textContent = type;
+  const val = document.getElementById('rtt-val');
+  val.textContent = d.target ? `${d.current} / ${d.target}` : d.current;
+  val.style.color = colors[type];
+  document.getElementById('rtt-msg').textContent = d.msg || '';
+  tip.classList.add('visible');
+}
+function hideRingTip() {
+  document.getElementById('ring-tooltip').classList.remove('visible');
 }
 
 /* ── Tabs ── */
