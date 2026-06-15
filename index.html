@@ -102,6 +102,9 @@
     .btn-set:hover { color: var(--text); }
     .toast { font-family: var(--font-mono); font-size: 12px; color: var(--accent); opacity: 0; transition: opacity 0.3s; padding-left: 4px; }
     .toast.show { opacity: 1; }
+    .file-status { font-family: var(--font-mono); font-size: 10px; color: var(--muted); padding-left: 2px; white-space: nowrap; }
+    .file-status.ok { color: var(--accent2); }
+    .file-status.err { color: #f0a500; }
 
     /* Grid */
     .grid-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
@@ -185,12 +188,6 @@
     </div>
   </div>
 
-  <div class="week-history">
-    <div class="section-title">Weekly goal history</div>
-    <div class="week-rows" id="week-history-rows"></div>
-    <div class="week-summary" id="week-summary"></div>
-  </div>
-
   <div class="streak-bar" id="streak-bar"></div>
 
   <div class="log-row">
@@ -200,7 +197,15 @@
     <button class="btn-log" onclick="logApps()">+ add</button>
     <button class="btn-set" onclick="setApps()">set exact</button>
     <button class="btn-set" onclick="exportCSV()">export csv</button>
+    <button class="btn-set" id="btn-sync" onclick="pickSyncFile()" title="Connect a CSV file on your disk — app will auto-save to it">sync file</button>
+    <span class="file-status" id="file-status"></span>
     <span class="toast" id="toast"></span>
+  </div>
+
+  <div class="week-history">
+    <div class="section-title">Weekly goal history</div>
+    <div class="week-rows" id="week-history-rows"></div>
+    <div class="week-summary" id="week-summary"></div>
   </div>
 
   <div class="grid-wrap" id="grid-wrap"></div>
@@ -229,7 +234,10 @@ const SEED = {
   "2026-04-21":1,
   "2026-05-06":5,"2026-05-07":3,"2026-05-11":12,"2026-05-13":1,
   "2026-05-14":10,"2026-05-15":9,"2026-05-16":16,"2026-05-19":1,
-  "2026-05-22":11,"2026-05-24":1
+  "2026-05-22":11,"2026-05-23":1,"2026-05-24":2,
+  "2026-05-25":15,"2026-05-26":16,"2026-05-27":11,"2026-05-28":2,
+  "2026-05-29":11,
+  "2026-06-01":11,"2026-06-10":16,"2026-06-13":19,"2026-06-14":12
 };
 
 const STORE_KEY = "smriti_job_tracker_v1";
@@ -240,6 +248,128 @@ let goal = { daily: 10, weekly: 30, monthly: 100 };
 let weeklyChart = null;
 let monthlyChart = null;
 
+/* ── File Sync (File System Access API) ── */
+let syncFileHandle = null;
+
+function openIDB() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open("epa_sync", 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore("handles");
+    req.onsuccess = e => res(e.target.result);
+    req.onerror = rej;
+  });
+}
+async function idbGet(key) {
+  const db = await openIDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction("handles", "readonly");
+    const req = tx.objectStore("handles").get(key);
+    req.onsuccess = () => res(req.result);
+    req.onerror = rej;
+  });
+}
+async function idbSet(key, val) {
+  const db = await openIDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction("handles", "readwrite");
+    tx.objectStore("handles").put(val, key);
+    tx.oncomplete = res;
+    tx.onerror = rej;
+  });
+}
+
+function csvToData(text) {
+  const out = {};
+  text.trim().split("\n").slice(1).forEach(line => {
+    const [date, count] = line.split(",");
+    if (date && count && date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const n = parseInt(count);
+      if (n > 0) out[date.trim()] = n;
+    }
+  });
+  return out;
+}
+function dataToCSV(d) {
+  const rows = [["date","applications"]];
+  Object.keys(d).filter(k => d[k] > 0).sort().forEach(k => rows.push([k, d[k]]));
+  return rows.map(r => r.join(",")).join("\n");
+}
+
+function setFileStatus(msg, cls) {
+  const el = document.getElementById("file-status");
+  el.textContent = msg;
+  el.className = "file-status" + (cls ? " " + cls : "");
+}
+
+async function tryRestoreFileHandle() {
+  if (!window.showOpenFilePicker) return;
+  try {
+    const fh = await idbGet("syncFile");
+    if (!fh) return;
+    const perm = await fh.queryPermission({ mode: "readwrite" });
+    if (perm === "granted") {
+      syncFileHandle = fh;
+      await loadFromFile();
+    } else if (perm === "prompt") {
+      syncFileHandle = fh;
+      setFileStatus("● click to reconnect → " + fh.name, "err");
+      document.getElementById("btn-sync").textContent = "reconnect";
+    }
+  } catch(e) {}
+}
+
+async function loadFromFile() {
+  if (!syncFileHandle) return false;
+  try {
+    const file = await syncFileHandle.getFile();
+    const text = await file.text();
+    const parsed = csvToData(text);
+    if (Object.keys(parsed).length > 0) {
+      data = parsed;
+      try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch(e) {}
+    }
+    setFileStatus("● " + syncFileHandle.name, "ok");
+    document.getElementById("btn-sync").textContent = "synced ✓";
+    return true;
+  } catch(e) {
+    setFileStatus("read error", "err");
+    return false;
+  }
+}
+
+async function writeToFile() {
+  if (!syncFileHandle) return;
+  try {
+    const perm = await syncFileHandle.requestPermission({ mode: "readwrite" });
+    if (perm !== "granted") return;
+    const writable = await syncFileHandle.createWritable();
+    await writable.write(dataToCSV(data));
+    await writable.close();
+  } catch(e) {}
+}
+
+async function pickSyncFile() {
+  if (!window.showOpenFilePicker) {
+    alert("File System Access API is not supported in this browser. Use Chrome or Edge.");
+    return;
+  }
+  try {
+    const [fh] = await window.showOpenFilePicker({
+      types: [{ description: "CSV", accept: { "text/csv": [".csv"] } }],
+      multiple: false
+    });
+    syncFileHandle = fh;
+    await idbSet("syncFile", fh);
+    const loaded = await loadFromFile();
+    if (loaded) {
+      render();
+      showToast("synced from " + fh.name);
+    }
+  } catch(e) {
+    if (e.name !== "AbortError") setFileStatus("error picking file", "err");
+  }
+}
+
 /* ── Storage ── */
 function load() {
   try { const r = localStorage.getItem(STORE_KEY); data = r ? JSON.parse(r) : {...SEED}; } catch(e) { data = {...SEED}; }
@@ -247,6 +377,7 @@ function load() {
 }
 function save() {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch(e) {}
+  writeToFile();
 }
 function saveGoalStore() {
   try { localStorage.setItem(GOAL_KEY, JSON.stringify(goal)); } catch(e) {}
@@ -794,6 +925,7 @@ document.getElementById("inp-count").addEventListener("keydown", e => { if (e.ke
 
 load();
 render();
+tryRestoreFileHandle().then(() => render());
 </script>
 </body>
 </html>
