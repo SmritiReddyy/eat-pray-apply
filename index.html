@@ -549,10 +549,15 @@ function setRing(type, pct) {
   if (cap) {
     if (pct >= 100) {
       const overflowLen = Math.min(1, (pct / 100 - 1)) * c;
-      const capOffset = c - overflowLen;
-      cap.style.strokeDashoffset = capOffset;
+      // Tuck the arc start under the main ring's rounded endpoint so it isn't visible.
+      // Rotate cap clockwise by half-stroke-width in arc-degrees, extend arc by same amount.
+      const TUCK = 8; // half of stroke-width=16
+      const tuckDeg = TUCK / c * 360;
+      cap.setAttribute("transform", `rotate(${-90 + tuckDeg} 110 110)`);
+      cap.style.strokeDashoffset = c - (overflowLen + TUCK);
       cap.setAttribute("visibility", "visible");
     } else {
+      cap.setAttribute("transform", "rotate(-90 110 110)");
       cap.style.strokeDashoffset = c;
       cap.setAttribute("visibility", "hidden");
     }
