@@ -188,9 +188,8 @@
     <div class="rings-svg-wrap">
       <svg width="220" height="220" viewBox="0 0 220 220">
         <defs>
-          <!-- shadow on the lap cap so it reads as "on top" of the ring -->
-          <filter id="cap-shadow" x="-30%" y="-30%" width="160%" height="160%">
-            <feDropShadow dx="-1.5" dy="0" stdDeviation="2" flood-color="#00000088"/>
+          <filter id="tip-shadow" x="-100%" y="-100%" width="300%" height="300%">
+            <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="rgba(0,0,0,0.9)"/>
           </filter>
         </defs>
         <!-- monthly track + fill (outer, r=95, C≈597) -->
@@ -202,15 +201,13 @@
         <!-- daily track + fill (inner, r=49, C≈308) -->
         <circle class="ring-track" cx="110" cy="110" r="49" stroke="#ff453a22" stroke-width="16"/>
         <circle class="ring-fill"  cx="110" cy="110" r="49" stroke="#ff453a"  stroke-width="16" id="ring-daily"   stroke-dasharray="308" stroke-dashoffset="308"/>
-        <!-- lap caps — full-circumference arcs that fill based on overflow past 100%, rendered on top -->
-        <!-- cap arcs: butt linecap so no rounded protrusion at the hidden start end -->
-        <circle fill="none" stroke-linecap="butt" cx="110" cy="110" r="95" stroke="#3ddc84" stroke-width="16" id="ring-monthly-cap" stroke-dasharray="597" stroke-dashoffset="597" transform="rotate(-90 110 110)" visibility="hidden" style="transition:stroke-dashoffset 0.6s cubic-bezier(.4,0,.2,1)"/>
-        <circle fill="none" stroke-linecap="butt" cx="110" cy="110" r="72" stroke="#ffd60a" stroke-width="16" id="ring-weekly-cap"  stroke-dasharray="452" stroke-dashoffset="452" transform="rotate(-90 110 110)" visibility="hidden" style="transition:stroke-dashoffset 0.6s cubic-bezier(.4,0,.2,1)"/>
-        <circle fill="none" stroke-linecap="butt" cx="110" cy="110" r="49" stroke="#ff453a" stroke-width="16" id="ring-daily-cap"   stroke-dasharray="308" stroke-dashoffset="308" transform="rotate(-90 110 110)" visibility="hidden" style="transition:stroke-dashoffset 0.6s cubic-bezier(.4,0,.2,1)"/>
-        <!-- tip dots: round dot placed only at the leading end of each cap arc -->
-        <circle id="ring-monthly-tip" r="8" fill="#3ddc84" visibility="hidden" filter="url(#cap-shadow)"/>
-        <circle id="ring-weekly-tip"  r="8" fill="#ffd60a" visibility="hidden" filter="url(#cap-shadow)"/>
-        <circle id="ring-daily-tip"   r="8" fill="#ff453a" visibility="hidden" filter="url(#cap-shadow)"/>
+        <!-- overflow markers: bright dot + white shimmer at the overflow position when ring > 100% -->
+        <circle id="ring-monthly-tip"   r="9"   fill="#44e890" visibility="hidden" filter="url(#tip-shadow)"/>
+        <circle id="ring-weekly-tip"    r="9"   fill="#ffe033" visibility="hidden" filter="url(#tip-shadow)"/>
+        <circle id="ring-daily-tip"     r="9"   fill="#ff6259" visibility="hidden" filter="url(#tip-shadow)"/>
+        <circle id="ring-monthly-shine" r="3.5" fill="rgba(255,255,255,0.45)" visibility="hidden"/>
+        <circle id="ring-weekly-shine"  r="3.5" fill="rgba(255,255,255,0.45)" visibility="hidden"/>
+        <circle id="ring-daily-shine"   r="3.5" fill="rgba(255,255,255,0.45)" visibility="hidden"/>
         <!-- hover zones -->
         <circle class="ring-hover" cx="110" cy="110" r="95" onmouseenter="showRingTip('monthly')" onmouseleave="hideRingTip()"/>
         <circle class="ring-hover" cx="110" cy="110" r="72" onmouseenter="showRingTip('weekly')"  onmouseleave="hideRingTip()"/>
@@ -551,31 +548,20 @@ function setRing(type, pct) {
   const offset = c - Math.min(1, pct / 100) * c;
   document.getElementById("ring-"+type).style.strokeDashoffset = offset;
   const RING_R = { daily: 49, weekly: 72, monthly: 95 };
-  const cap = document.getElementById("ring-"+type+"-cap");
-  const tip = document.getElementById("ring-"+type+"-tip");
-  if (cap) {
-    if (pct >= 100) {
-      const overflowLen = Math.min(1, (pct / 100 - 1)) * c;
-      // Tuck arc start under main ring's rounded endpoint (butt cap on arc, dot at tip only).
-      const TUCK = 8; // half stroke-width — hides the flat start under the main ring's end cap
-      const tuckDeg = TUCK / c * 360;
-      cap.setAttribute("transform", `rotate(${-90 + tuckDeg} 110 110)`);
-      cap.style.strokeDashoffset = c - (overflowLen + TUCK);
-      cap.setAttribute("visibility", "visible");
-      // Place the round tip dot at the leading end of the arc
-      if (tip) {
-        const r = RING_R[type];
-        const tipAngle = (-90 + tuckDeg + (overflowLen + TUCK) / c * 360) * Math.PI / 180;
-        tip.setAttribute("cx", 110 + r * Math.cos(tipAngle));
-        tip.setAttribute("cy", 110 + r * Math.sin(tipAngle));
-        tip.setAttribute("visibility", "visible");
-      }
-    } else {
-      cap.setAttribute("transform", "rotate(-90 110 110)");
-      cap.style.strokeDashoffset = c;
-      cap.setAttribute("visibility", "hidden");
-      if (tip) tip.setAttribute("visibility", "hidden");
-    }
+  const tip   = document.getElementById("ring-"+type+"-tip");
+  const shine = document.getElementById("ring-"+type+"-shine");
+  if (pct >= 100) {
+    // Position overflow marker dot at the overflow angle (how far past 100%)
+    const r = RING_R[type];
+    const overflowDeg = (pct % 100) / 100 * 360;
+    const angle = (-90 + overflowDeg) * Math.PI / 180;
+    const tx = 110 + r * Math.cos(angle);
+    const ty = 110 + r * Math.sin(angle);
+    if (tip)   { tip.setAttribute("cx", tx); tip.setAttribute("cy", ty); tip.setAttribute("visibility", "visible"); }
+    if (shine) { shine.setAttribute("cx", tx - 2.5); shine.setAttribute("cy", ty - 2.5); shine.setAttribute("visibility", "visible"); }
+  } else {
+    if (tip)   tip.setAttribute("visibility", "hidden");
+    if (shine) shine.setAttribute("visibility", "hidden");
   }
 }
 
