@@ -202,10 +202,10 @@
         <!-- daily track + fill (inner, r=49, C≈308) -->
         <circle class="ring-track" cx="110" cy="110" r="49" stroke="#ff453a22" stroke-width="16"/>
         <circle class="ring-fill"  cx="110" cy="110" r="49" stroke="#ff453a"  stroke-width="16" id="ring-daily"   stroke-dasharray="308" stroke-dashoffset="308"/>
-        <!-- lap caps — short arc at 12-o'clock that appears when ring >= 100%, rendered on top -->
-        <circle class="ring-fill" cx="110" cy="110" r="95" stroke="#3ddc84" stroke-width="16" id="ring-monthly-cap" stroke-dasharray="50 547" stroke-dashoffset="0" filter="url(#cap-shadow)" style="display:none"/>
-        <circle class="ring-fill" cx="110" cy="110" r="72" stroke="#ffd60a" stroke-width="16" id="ring-weekly-cap"  stroke-dasharray="38 414" stroke-dashoffset="0" filter="url(#cap-shadow)" style="display:none"/>
-        <circle class="ring-fill" cx="110" cy="110" r="49" stroke="#ff453a" stroke-width="16" id="ring-daily-cap"   stroke-dasharray="26 282" stroke-dashoffset="0" filter="url(#cap-shadow)" style="display:none"/>
+        <!-- lap caps — full-circumference arcs that fill based on overflow past 100%, rendered on top -->
+        <circle fill="none" stroke-linecap="round" cx="110" cy="110" r="95" stroke="#3ddc84" stroke-width="16" id="ring-monthly-cap" stroke-dasharray="597" stroke-dashoffset="597" transform="rotate(-90 110 110)" filter="url(#cap-shadow)" visibility="hidden" style="transition:stroke-dashoffset 0.6s cubic-bezier(.4,0,.2,1)"/>
+        <circle fill="none" stroke-linecap="round" cx="110" cy="110" r="72" stroke="#ffd60a" stroke-width="16" id="ring-weekly-cap"  stroke-dasharray="452" stroke-dashoffset="452" transform="rotate(-90 110 110)" filter="url(#cap-shadow)" visibility="hidden" style="transition:stroke-dashoffset 0.6s cubic-bezier(.4,0,.2,1)"/>
+        <circle fill="none" stroke-linecap="round" cx="110" cy="110" r="49" stroke="#ff453a" stroke-width="16" id="ring-daily-cap"   stroke-dasharray="308" stroke-dashoffset="308" transform="rotate(-90 110 110)" filter="url(#cap-shadow)" visibility="hidden" style="transition:stroke-dashoffset 0.6s cubic-bezier(.4,0,.2,1)"/>
         <!-- hover zones -->
         <circle class="ring-hover" cx="110" cy="110" r="95" onmouseenter="showRingTip('monthly')" onmouseleave="hideRingTip()"/>
         <circle class="ring-hover" cx="110" cy="110" r="72" onmouseenter="showRingTip('weekly')"  onmouseleave="hideRingTip()"/>
@@ -546,7 +546,17 @@ function setRing(type, pct) {
   const offset = c - Math.min(1, pct / 100) * c;
   document.getElementById("ring-"+type).style.strokeDashoffset = offset;
   const cap = document.getElementById("ring-"+type+"-cap");
-  if (cap) cap.style.display = pct >= 100 ? "" : "none";
+  if (cap) {
+    if (pct >= 100) {
+      const overflowLen = Math.min(1, (pct / 100 - 1)) * c;
+      const capOffset = c - overflowLen;
+      cap.style.strokeDashoffset = capOffset;
+      cap.setAttribute("visibility", "visible");
+    } else {
+      cap.style.strokeDashoffset = c;
+      cap.setAttribute("visibility", "hidden");
+    }
+  }
 }
 
 function timeLeftMsg(type, now) {
@@ -576,8 +586,9 @@ function updateGoal() {
 
   [["daily", dailyCurrent], ["weekly", weeklyCurrent], ["monthly", monthlyCurrent]].forEach(([type, current]) => {
     const target = goal[type] || 0;
-    const pct    = target > 0 ? Math.min(100, Math.round(current / target * 100)) : 0;
-    setRing(type, pct);
+    const rawPct = target > 0 ? Math.round(current / target * 100) : 0;
+    const pct    = Math.min(100, rawPct);
+    setRing(type, rawPct);
 
     document.getElementById("goal-input-"+type).value = target || "";
     document.getElementById("rleg-"+type+"-nums").textContent = `${current} / ${target || "—"}`;
