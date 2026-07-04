@@ -5,7 +5,8 @@
 | Action | How |
 |---|---|
 | Log for today | Set the count, click **+ add** |
-| Log for a past day | Click any cell in the grid → set count → **+ add** |
+| See a past day's rings | Click any cell in the history grid → a modal shows that day's daily/weekly/monthly rings, judged against the goals that were in effect *that day* |
+| Log for a past day | Click a grid cell → **log / edit this day** → set count → **+ add** |
 | Correct a day's count | Select the date, enter the correct total, click **set exact** |
 | Keyboard shortcut | Type count in the number field, press **Enter** |
 | Export data | Click **export csv** — downloads `job-applications.csv` |

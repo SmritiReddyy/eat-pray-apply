@@ -157,6 +157,17 @@
     .tab-pane { display: none; flex-direction: column; gap: 1.5rem; }
     .tab-pane.active { display: flex; }
 
+    /* Day-rings modal */
+    .day-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: none; align-items: center; justify-content: center; z-index: 100; padding: 1rem; }
+    .day-modal.visible { display: flex; }
+    .day-modal-card { background: var(--surface); border: 1px solid var(--border2); border-radius: 10px; padding: 24px; max-width: 500px; width: 100%; position: relative; display: flex; flex-direction: column; gap: 18px; }
+    .day-modal-close { position: absolute; top: 10px; right: 14px; background: transparent; border: none; color: var(--muted); font-size: 24px; line-height: 1; cursor: pointer; padding: 0; }
+    .day-modal-close:hover { color: var(--text); }
+    .day-modal-title { font-family: var(--font-mono); font-size: 13px; color: var(--accent); letter-spacing: 0.03em; }
+    .day-modal-body { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+    .day-modal-body .rings-legend { min-width: 200px; }
+    .day-modal-foot { display: flex; gap: 8px; }
+
     @media (max-width: 600px) {
       .stats { grid-template-columns: repeat(2, 1fr); }
       header { flex-direction: column; gap: 4px; }
@@ -345,6 +356,32 @@
   </div><!-- end pane-stats -->
 
 </main>
+
+<!-- Per-day rings modal -->
+<div class="day-modal" id="day-modal" onclick="if(event.target===this)closeDayRings()">
+  <div class="day-modal-card">
+    <button class="day-modal-close" onclick="closeDayRings()" aria-label="Close">&times;</button>
+    <div class="day-modal-title" id="day-modal-title"></div>
+    <div class="day-modal-body">
+      <div class="rings-svg-wrap">
+        <svg width="200" height="200" viewBox="0 0 220 220">
+          <circle class="ring-track" cx="110" cy="110" r="95" stroke="#3ddc8422" stroke-width="16"/>
+          <circle class="ring-fill"  cx="110" cy="110" r="95" stroke="#3ddc84" stroke-width="16" id="dm-ring-monthly" stroke-dasharray="597" stroke-dashoffset="597"/>
+          <circle class="ring-track" cx="110" cy="110" r="72" stroke="#ffd60a22" stroke-width="16"/>
+          <circle class="ring-fill"  cx="110" cy="110" r="72" stroke="#ffd60a" stroke-width="16" id="dm-ring-weekly" stroke-dasharray="452" stroke-dashoffset="452"/>
+          <circle class="ring-track" cx="110" cy="110" r="49" stroke="#ff453a22" stroke-width="16"/>
+          <circle class="ring-fill"  cx="110" cy="110" r="49" stroke="#ff453a" stroke-width="16" id="dm-ring-daily" stroke-dasharray="308" stroke-dashoffset="308"/>
+          <text x="110" y="104" text-anchor="middle" font-family="'DM Mono',monospace" font-size="11" fill="#96a898" letter-spacing="1">APPS</text>
+          <text x="110" y="124" text-anchor="middle" font-family="'DM Mono',monospace" font-size="22" font-weight="500" fill="#f0f5f1" id="dm-center-val">0</text>
+        </svg>
+      </div>
+      <div class="rings-legend" id="dm-legend"></div>
+    </div>
+    <div class="day-modal-foot">
+      <button class="btn-set" onclick="logFromModal()">log / edit this day</button>
+    </div>
+  </div>
+</div>
 
 <script>
 const SEED = {
@@ -1004,7 +1041,7 @@ function buildGrid() {
       const dayName = date.toLocaleDateString("en-US",{weekday:"short"});
       const tipText = count > 0 ? `${dayName} ${d}: ${count} app${count!==1?"s":""}` : `${dayName} ${d}`;
       const cellStyle = viewOnly ? ' style="cursor:default;opacity:0.45"' : '';
-      const cellClick = viewOnly ? '' : `onclick="clickCell('${key}')"`;
+      const cellClick = viewOnly ? '' : `onclick="showDayRings('${key}')"`;
       html += `<div class="day-cell ${lvl}${isToday}" ${cellClick}${cellStyle} data-key="${key}">${d}<div class="tip">${tipText}</div></div>`;
     }
     html += `</div></div>`;
@@ -1205,6 +1242,59 @@ function hideRingTip() {
   document.getElementById('ring-tooltip').classList.remove('visible');
 }
 
+/* ── Per-day rings modal ── */
+let dayModalKey = null;
+function showDayRings(key) {
+  dayModalKey = key;
+  const g = goalOn(key); // goals that were in effect on this date
+  const dailyCount = data[key] || 0;
+  const weekCount  = getWeekTotal(getWeekStart(key));
+  const prefix     = key.slice(0, 7);
+  const monthCount = Object.entries(data).filter(([k,v]) => k.startsWith(prefix) && v > 0).reduce((a,[,v])=>a+v, 0);
+
+  const rows = [
+    ["daily",   dailyCount,  g.daily   || 0, "#ff453a"],
+    ["weekly",  weekCount,   g.weekly  || 0, "#ffd60a"],
+    ["monthly", monthCount,  g.monthly || 0, "#3ddc84"]
+  ];
+
+  rows.forEach(([type, current, target]) => {
+    const c = RING_C[type];
+    const rawPct = target > 0 ? current / target * 100 : 0;
+    document.getElementById("dm-ring-"+type).style.strokeDashoffset = c - Math.min(1, rawPct/100) * c;
+  });
+  document.getElementById("dm-center-val").textContent = dailyCount;
+
+  const d = parseDate(key);
+  document.getElementById("day-modal-title").textContent =
+    d.toLocaleDateString("en-US", { weekday:"long", month:"long", day:"numeric", year:"numeric" });
+
+  document.getElementById("dm-legend").innerHTML = rows.map(([type, current, target, color]) => {
+    const label = type.charAt(0).toUpperCase() + type.slice(1);
+    let pctText;
+    if (!target) pctText = "no goal set";
+    else { const pct = Math.round(current/target*100); pctText = pct + "%" + (current >= target ? " · goal hit 🎉" : ""); }
+    return `<div class="ring-leg"><div class="ring-leg-row">
+      <div class="ring-dot" style="background:${color}"></div>
+      <span class="ring-leg-label">${label}</span>
+      <span class="ring-leg-nums" style="color:${color}">${current} / ${target || "—"}</span>
+    </div><div class="ring-leg-msg">${pctText}</div></div>`;
+  }).join("");
+
+  document.getElementById("day-modal").classList.add("visible");
+}
+function closeDayRings() {
+  document.getElementById("day-modal").classList.remove("visible");
+  dayModalKey = null;
+}
+function logFromModal() {
+  const key = dayModalKey;
+  closeDayRings();
+  if (!key) return;
+  switchTab('log');
+  clickCell(key);
+}
+
 /* ── Tabs ── */
 function switchTab(name) {
   document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
@@ -1221,6 +1311,7 @@ const inpDate = document.getElementById("inp-date");
 inpDate.value = today();
 inpDate.max   = today();
 document.getElementById("inp-count").addEventListener("keydown", e => { if (e.key === "Enter") logApps(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeDayRings(); });
 
 load();
 render();
