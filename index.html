@@ -362,9 +362,14 @@ const SEED = {
 
 const STORE_KEY = "smriti_job_tracker_v1";
 const GOAL_KEY  = "smriti_job_tracker_goal_v1";
+const GOALHIST_KEY = "smriti_job_tracker_goalhist_v1";
 
 let data = {};
 let goal = { daily: 10, weekly: 30, monthly: 100 };
+// Chronological log of goal snapshots. Each entry = the full goal set as of `date`.
+// Past days/weeks are judged against the goal active back then, so changing a
+// goal today never rewrites history. Sorted ascending by date.
+let goalHistory = [];
 let weeklyChart = null;
 let monthlyChart = null;
 
@@ -494,6 +499,8 @@ async function pickSyncFile() {
 function load() {
   try { const r = localStorage.getItem(STORE_KEY); data = r ? JSON.parse(r) : {...SEED}; } catch(e) { data = {...SEED}; }
   try { const g = localStorage.getItem(GOAL_KEY);  if (g) goal = JSON.parse(g); } catch(e) {}
+  try { const gh = localStorage.getItem(GOALHIST_KEY); if (gh) goalHistory = JSON.parse(gh); } catch(e) {}
+  if (!Array.isArray(goalHistory) || !goalHistory.length) seedGoalHistory();
 }
 function save() {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch(e) {}
@@ -501,6 +508,47 @@ function save() {
 }
 function saveGoalStore() {
   try { localStorage.setItem(GOAL_KEY, JSON.stringify(goal)); } catch(e) {}
+}
+function saveGoalHistStore() {
+  try { localStorage.setItem(GOALHIST_KEY, JSON.stringify(goalHistory)); } catch(e) {}
+}
+
+// One-time backfill of goal history from the current goal. Preserves the known
+// daily 10 → current change made on 2026-07-01 so past hits aren't rewritten.
+function seedGoalHistory() {
+  const keys = Object.keys(data).filter(k => data[k] > 0).sort();
+  const baseDate = keys.length ? keys[0] : today();
+  const cur = { daily: goal.daily || 0, weekly: goal.weekly || 0, monthly: goal.monthly || 0 };
+  if (cur.daily !== 10 && baseDate < "2026-07-01") {
+    goalHistory = [
+      { date: baseDate,     daily: 10, weekly: cur.weekly, monthly: cur.monthly },
+      { date: "2026-07-01", daily: cur.daily, weekly: cur.weekly, monthly: cur.monthly }
+    ];
+  } else {
+    goalHistory = [ { date: baseDate, ...cur } ];
+  }
+  saveGoalHistStore();
+}
+
+// Goal set in effect on a given YYYY-MM-DD (latest snapshot whose date <= key;
+// falls back to the earliest snapshot for dates before any record).
+function goalOn(dateKey) {
+  if (!goalHistory.length) return goal;
+  let result = goalHistory[0];
+  for (const entry of goalHistory) {
+    if (entry.date <= dateKey) result = entry; else break;
+  }
+  return result;
+}
+
+// Snapshot the current goal set as of today. Called whenever any goal changes.
+function recordGoalChange() {
+  const t = today();
+  const snap = { date: t, daily: goal.daily || 0, weekly: goal.weekly || 0, monthly: goal.monthly || 0 };
+  const last = goalHistory[goalHistory.length - 1];
+  if (last && last.date === t) goalHistory[goalHistory.length - 1] = snap;
+  else goalHistory.push(snap);
+  saveGoalHistStore();
 }
 
 /* ── Helpers ── */
@@ -538,7 +586,9 @@ function saveGoal(type) {
   if (!v || v < 1) return;
   goal[type] = v;
   saveGoalStore();
+  recordGoalChange();
   updateGoal();
+  updateStats();
   buildWeeklyGoalHistory();
   showToast(type + " goal saved");
 }
@@ -698,17 +748,21 @@ function updateStats() {
     document.getElementById("s-bestweek").textContent = "";
   }
 
-  // weeks on goal
-  const wGoal = goal.weekly || 0;
-  const completedMondays = mondays.filter(m => m < ws); // exclude current partial week
-  if (wGoal > 0 && completedMondays.length > 0) {
-    const hitWeeks = completedMondays.filter(m => getWeekTotal(m) >= wGoal).length;
-    document.getElementById("s-weekgoal").textContent = hitWeeks;
-    const rate = Math.round(hitWeeks / completedMondays.length * 100);
-    document.getElementById("s-weekgoal-rate").textContent = `${rate}% of ${completedMondays.length} wk${completedMondays.length !== 1 ? "s" : ""}`;
-  } else if (wGoal === 0) {
+  // weeks on goal — each week judged against the weekly goal active back then.
+  // The current partial week is included only once it has already hit its goal.
+  const wGoalNow = goal.weekly || 0;
+  const completedMondays = mondays.filter(m => m < ws);
+  const weekHit = m => { const g = goalOn(m).weekly || 0; return g > 0 && getWeekTotal(m) >= g; };
+  const evalMondays = completedMondays.slice();
+  if (weekHit(ws)) evalMondays.push(ws);
+  if (wGoalNow === 0) {
     document.getElementById("s-weekgoal").textContent = "—";
     document.getElementById("s-weekgoal-rate").textContent = "set weekly goal";
+  } else if (evalMondays.length > 0) {
+    const hitWeeks = evalMondays.filter(weekHit).length;
+    document.getElementById("s-weekgoal").textContent = hitWeeks;
+    const rate = Math.round(hitWeeks / evalMondays.length * 100);
+    document.getElementById("s-weekgoal-rate").textContent = `${rate}% of ${evalMondays.length} wk${evalMondays.length !== 1 ? "s" : ""}`;
   } else {
     document.getElementById("s-weekgoal").textContent = "—";
     document.getElementById("s-weekgoal-rate").textContent = "not enough data";
@@ -765,7 +819,11 @@ function buildWeeklyGoalHistory() {
   if (historyRange === 1) {
     const dayNames = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
     const dGoal = goal.daily || 0;
-    const maxVal = Math.max(dGoal || 1, ...Array.from({length:7},(_,i)=>{
+    // Each day judged against the daily goal that was active on that day.
+    const dayGoals = Array.from({length:7},(_,i)=>{
+      const d=new Date(todayMonday+"T12:00:00"); d.setDate(d.getDate()+i); return goalOn(toKey(d)).daily||0;
+    });
+    const maxVal = Math.max(...dayGoals, ...Array.from({length:7},(_,i)=>{
       const d=new Date(todayMonday+"T12:00:00"); d.setDate(d.getDate()+i); return data[toKey(d)]||0;
     }), 1);
     let rowsHtml = '';
@@ -774,12 +832,13 @@ function buildWeeklyGoalHistory() {
       const d = new Date(todayMonday+"T12:00:00"); d.setDate(d.getDate()+i);
       const key = toKey(d);
       const count = data[key] || 0;
+      const dGoalDay = dayGoals[i];
       const isFuture = key > todayKey;
       const isToday = key === todayKey;
       const pct = Math.min(100, Math.round(count / maxVal * 100));
-      const isHit = dGoal > 0 && count >= dGoal;
+      const isHit = dGoalDay > 0 && count >= dGoalDay;
       const fillClass = isHit ? ' hit' : '';
-      const goalMarker = dGoal > 0 ? `<div style="position:absolute;top:-2px;bottom:-2px;left:${Math.min(100,Math.round(dGoal/maxVal*100))}%;width:1px;background:var(--border2)"></div>` : '';
+      const goalMarker = dGoalDay > 0 ? `<div style="position:absolute;top:-2px;bottom:-2px;left:${Math.min(100,Math.round(dGoalDay/maxVal*100))}%;width:1px;background:var(--border2)"></div>` : '';
       const badge = isToday ? `<div class="week-badge cur">today</div>` : isFuture ? `<div class="week-badge miss" style="opacity:0.3">—</div>` : isHit ? `<div class="week-badge hit">hit</div>` : `<div class="week-badge miss">miss</div>`;
       rowsHtml += `<div class="week-row" style="${isFuture?'opacity:0.35':''}">
         <div class="week-label">${dayNames[i]} ${d.toLocaleDateString("en-US",{month:"short",day:"numeric"})}</div>
@@ -812,17 +871,21 @@ function buildWeeklyGoalHistory() {
     return { monday, label, total, isCurrent };
   });
 
-  const maxTotal = Math.max(...rows.map(r => r.total), wGoal || 1, 1);
-  const completedRows = rows.filter(r => !r.isCurrent);
-  const hitCount = wGoal > 0 ? completedRows.filter(r => r.total >= wGoal).length : 0;
+  // weekly goal in effect for each week (looked up by its Monday)
+  rows.forEach(r => { r.wGoal = goalOn(r.monday).weekly || 0; r.isHit = r.wGoal > 0 && r.total >= r.wGoal; });
+  const maxTotal = Math.max(...rows.map(r => r.total), ...rows.map(r => r.wGoal), 1);
+  // A week counts toward the tally once it's assessable: any completed week, or
+  // the current week once it has already crossed its goal.
+  const assessed = rows.filter(r => !r.isCurrent || r.isHit);
+  const hitCount = assessed.filter(r => r.isHit).length;
 
   const rowsHtml = rows.map(r => {
     const pct = Math.min(100, Math.round(r.total / maxTotal * 100));
-    const isHit = wGoal > 0 && r.total >= wGoal;
-    const badgeClass = r.isCurrent ? "cur" : isHit ? "hit" : "miss";
-    const badgeText  = r.isCurrent ? "now" : isHit ? "hit" : "miss";
+    const isHit = r.isHit;
+    const badgeClass = isHit ? "hit" : r.isCurrent ? "cur" : "miss";
+    const badgeText  = isHit ? "hit" : r.isCurrent ? "now" : "miss";
     const fillClass  = isHit ? " hit" : "";
-    const goalMarker = wGoal > 0 ? `<div style="position:absolute;top:-2px;bottom:-2px;left:${Math.min(100,Math.round(wGoal/maxTotal*100))}%;width:1px;background:var(--border2)"></div>` : "";
+    const goalMarker = r.wGoal > 0 ? `<div style="position:absolute;top:-2px;bottom:-2px;left:${Math.min(100,Math.round(r.wGoal/maxTotal*100))}%;width:1px;background:var(--border2)"></div>` : "";
     return `<div class="week-row">
       <div class="week-label">${r.label}</div>
       <div class="week-bar-wrap">
@@ -840,12 +903,15 @@ function buildWeeklyGoalHistory() {
 
   let summaryHtml = "";
   if (wGoal > 0) {
-    const n = completedRows.length;
-    summaryHtml += `<span><strong>${hitCount}</strong> of ${n} weeks hit goal of <strong>${wGoal}</strong></span>`;
+    const n = assessed.length;
+    const goalsUsed = [...new Set(assessed.map(r => r.wGoal).filter(g => g > 0))];
+    summaryHtml += goalsUsed.length === 1
+      ? `<span><strong>${hitCount}</strong> of ${n} weeks hit goal of <strong>${goalsUsed[0]}</strong></span>`
+      : `<span><strong>${hitCount}</strong> of ${n} weeks hit their goal</span>`;
     if (n > 0) summaryHtml += `<span>hit rate: <strong>${Math.round(hitCount/n*100)}%</strong></span>`;
     let wStreak = 0;
-    for (let i = completedRows.length-1; i >= 0; i--) {
-      if (completedRows[i].total >= wGoal) wStreak++; else break;
+    for (let i = assessed.length-1; i >= 0; i--) {
+      if (assessed[i].isHit) wStreak++; else break;
     }
     if (wStreak > 0) summaryHtml += `<span>weekly streak: <strong>${wStreak}wk</strong></span>`;
   } else {
@@ -860,12 +926,13 @@ function calcStreaks() {
   if (!keys.length) return { current: 0, longest: 0 };
   let longest = 1, cur = 1;
   for (let i = 1; i < keys.length; i++) {
-    const diff = (new Date(keys[i]) - new Date(keys[i-1])) / 86400000;
+    // parseDate anchors at local noon; Math.round absorbs DST-induced 23/25h days
+    const diff = Math.round((parseDate(keys[i]) - parseDate(keys[i-1])) / 86400000);
     if (diff === 1) { cur++; longest = Math.max(longest, cur); } else { cur = 1; }
   }
-  let d = new Date(today()), streak = 0;
+  let d = parseDate(today()), streak = 0;
   while (true) {
-    const k = toKey(d);
+    const k = fmtDate(d);
     if (data[k] && data[k] > 0) { streak++; d.setDate(d.getDate()-1); } else break;
   }
   return { current: streak, longest };
