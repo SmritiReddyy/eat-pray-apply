@@ -756,33 +756,41 @@ function updateStats() {
   document.getElementById("s-week").textContent  = weekSum;
   document.getElementById("ss-week").textContent = weekSum;
 
-  // Trend arrow: compare this week's daily pace vs overall avg
+  // Benchmark shared by the trend arrow and the "vs Nwk avg" line: the average
+  // weekly total over the last 4 completed weeks (fewer while still ramping up).
+  const mondays = getAllWeekMondays();
+  const recentWeeks = mondays.filter(m => m < ws).slice(-4);
+  const avgRecent = recentWeeks.length ? recentWeeks.reduce((a,m) => a + getWeekTotal(m), 0) / recentWeeks.length : 0;
+
+  // Trend arrow: this week's per-day pace vs the recent weekly average on the same
+  // per-day basis (avgRecent/7), so early-week days aren't unfairly "below avg".
   const daysIntoWeek = Math.max(1, (now.getDay() + 6) % 7 + 1);
   const thisWeekPace = weekSum / daysIntoWeek;
   const trendEl = document.getElementById("s-trend");
-  if (trendEl && vals.length > 3 && avgPerDay > 0) {
-    const ratio = thisWeekPace / avgPerDay;
+  if (trendEl && recentWeeks.length > 0 && avgRecent > 0) {
+    const ratio = thisWeekPace / (avgRecent / 7);
     if (ratio >= 1.1)       { trendEl.textContent = "↑ above avg"; trendEl.style.color = "var(--accent)"; }
     else if (ratio <= 0.9)  { trendEl.textContent = "↓ below avg"; trendEl.style.color = "#f0a500"; }
     else                    { trendEl.textContent = "→ on avg";    trendEl.style.color = "var(--muted)"; }
   } else if (trendEl) { trendEl.textContent = ""; }
 
   // best week
-  const mondays = getAllWeekMondays();
   let bestWeek = 0;
   mondays.forEach(m => { const t = getWeekTotal(m); if (t > bestWeek) bestWeek = t; });
   document.getElementById("s-bestweekval").textContent  = bestWeek;
   document.getElementById("ss-bestweekval").textContent = bestWeek;
 
-  // this week vs last week
-  const lastWs = parseDate(getWeekStart());
-  lastWs.setDate(lastWs.getDate() - 7);
-  const lastWeekSum = getWeekTotal(fmtDate(lastWs));
-  if (lastWeekSum > 0) {
-    const diff = weekSum - lastWeekSum;
-    document.getElementById("s-bestweek").textContent = diff > 0 ? `↑ ${diff} vs last wk` : diff < 0 ? `↓ ${Math.abs(diff)} vs last wk` : "same as last wk";
+  // this week vs the recent weekly average computed above
+  const sbEl = document.getElementById("s-bestweek");
+  if (recentWeeks.length > 0) {
+    const diff = weekSum - avgRecent;
+    const mag = Math.round(Math.abs(diff));
+    const lbl = `${recentWeeks.length}wk avg`;
+    if (mag === 0)     sbEl.textContent = `→ on ${lbl}`;
+    else if (diff > 0) sbEl.textContent = `↑ ${mag} vs ${lbl}`;
+    else               sbEl.textContent = `↓ ${mag} vs ${lbl}`;
   } else {
-    document.getElementById("s-bestweek").textContent = "";
+    sbEl.textContent = "";
   }
 
   // weeks on goal — each week judged against the weekly goal active back then.
@@ -1248,9 +1256,18 @@ function showDayRings(key) {
   dayModalKey = key;
   const g = goalOn(key); // goals that were in effect on this date
   const dailyCount = data[key] || 0;
-  const weekCount  = getWeekTotal(getWeekStart(key));
+  // Weekly/monthly reflect progress AS OF that day — cumulative from the start of
+  // the week/month through the clicked day (inclusive), not the whole period.
+  const wStart = parseDate(getWeekStart(key));
+  let weekCount = 0;
+  for (let i = 0; i < 7; i++) {
+    const day = new Date(wStart); day.setDate(day.getDate() + i);
+    const dk = fmtDate(day);
+    if (dk > key) break;
+    weekCount += data[dk] || 0;
+  }
   const prefix     = key.slice(0, 7);
-  const monthCount = Object.entries(data).filter(([k,v]) => k.startsWith(prefix) && v > 0).reduce((a,[,v])=>a+v, 0);
+  const monthCount = Object.entries(data).filter(([k,v]) => k.startsWith(prefix) && v > 0 && k <= key).reduce((a,[,v])=>a+v, 0);
 
   const rows = [
     ["daily",   dailyCount,  g.daily   || 0, "#ff453a"],
