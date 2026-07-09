@@ -52,10 +52,16 @@
     .week-rows { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
     .week-row { display: flex; align-items: center; gap: 10px; }
     .week-label { font-family: var(--font-mono); font-size: 10px; color: var(--muted); width: 90px; flex-shrink: 0; }
-    .week-bar-wrap { flex: 1; }
+    .week-bar-wrap { flex: 1; position: relative; }
     .week-bar-track { background: var(--surface2); border-radius: 99px; height: 4px; overflow: hidden; }
     .week-bar-fill { height: 100%; border-radius: 99px; background: var(--accent2); transition: width 0.4s ease; }
     .week-bar-fill.hit { background: var(--accent); }
+    /* Goal marker: a faint threshold line on the bar, with a wide/tall invisible hover zone + tooltip */
+    .goal-marker { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 14px; height: 16px; display: flex; align-items: center; justify-content: center; cursor: help; z-index: 3; }
+    .goal-marker::before { content: ""; width: 1px; height: 8px; background: var(--border2); transition: background 0.15s, height 0.15s; }
+    .goal-marker:hover::before { background: var(--muted); height: 12px; }
+    .goal-marker-tip { position: absolute; bottom: calc(100% - 1px); left: 50%; transform: translateX(-50%); background: #222; border: 1px solid var(--border2); border-radius: 4px; padding: 4px 8px; white-space: nowrap; font-family: var(--font-mono); font-size: 10px; color: var(--text); opacity: 0; pointer-events: none; transition: opacity 0.15s; z-index: 12; }
+    .goal-marker:hover .goal-marker-tip { opacity: 1; }
     .week-count { font-family: var(--font-mono); font-size: 11px; color: var(--text); width: 30px; text-align: right; flex-shrink: 0; }
     .week-badge { font-family: var(--font-mono); font-size: 9px; font-weight: 500; padding: 2px 6px; border-radius: 3px; flex-shrink: 0; width: 36px; text-align: center; }
     .week-badge.hit { background: var(--accent4); color: var(--accent); border: 1px solid var(--accent3); }
@@ -879,11 +885,11 @@ function buildWeeklyGoalHistory() {
       const pct = Math.min(100, Math.round(count / maxVal * 100));
       const isHit = dGoalDay > 0 && count >= dGoalDay;
       const fillClass = isHit ? ' hit' : '';
-      const goalMarker = dGoalDay > 0 ? `<div style="position:absolute;top:-2px;bottom:-2px;left:${Math.min(100,Math.round(dGoalDay/maxVal*100))}%;width:1px;background:var(--border2)"></div>` : '';
+      const goalMarker = dGoalDay > 0 ? `<div class="goal-marker" style="left:${Math.min(100,Math.round(dGoalDay/maxVal*100))}%"><div class="goal-marker-tip">daily goal · ${dGoalDay}</div></div>` : '';
       const badge = isToday ? `<div class="week-badge cur">today</div>` : isFuture ? `<div class="week-badge miss" style="opacity:0.3">—</div>` : isHit ? `<div class="week-badge hit">hit</div>` : `<div class="week-badge miss">miss</div>`;
       rowsHtml += `<div class="week-row" style="${isFuture?'opacity:0.35':''}">
         <div class="week-label">${dayNames[i]} ${d.toLocaleDateString("en-US",{month:"short",day:"numeric"})}</div>
-        <div class="week-bar-wrap"><div class="week-bar-track" style="position:relative"><div class="week-bar-fill${fillClass}" style="width:${pct}%"></div>${goalMarker}</div></div>
+        <div class="week-bar-wrap"><div class="week-bar-track"><div class="week-bar-fill${fillClass}" style="width:${pct}%"></div></div>${goalMarker}</div>
         <div class="week-count">${count || ''}</div>
         ${badge}
       </div>`;
@@ -926,14 +932,12 @@ function buildWeeklyGoalHistory() {
     const badgeClass = isHit ? "hit" : r.isCurrent ? "cur" : "miss";
     const badgeText  = isHit ? "hit" : r.isCurrent ? "now" : "miss";
     const fillClass  = isHit ? " hit" : "";
-    const goalMarker = r.wGoal > 0 ? `<div style="position:absolute;top:-2px;bottom:-2px;left:${Math.min(100,Math.round(r.wGoal/maxTotal*100))}%;width:1px;background:var(--border2)"></div>` : "";
+    const goalMarker = r.wGoal > 0 ? `<div class="goal-marker" style="left:${Math.min(100,Math.round(r.wGoal/maxTotal*100))}%"><div class="goal-marker-tip">weekly goal · ${r.wGoal}</div></div>` : "";
     return `<div class="week-row">
       <div class="week-label">${r.label}</div>
       <div class="week-bar-wrap">
-        <div class="week-bar-track" style="position:relative">
-          <div class="week-bar-fill${fillClass}" style="width:${pct}%"></div>
-          ${goalMarker}
-        </div>
+        <div class="week-bar-track"><div class="week-bar-fill${fillClass}" style="width:${pct}%"></div></div>
+        ${goalMarker}
       </div>
       <div class="week-count">${r.total || ""}</div>
       <div class="week-badge ${badgeClass}">${badgeText}</div>
