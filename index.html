@@ -40,6 +40,7 @@
 
     /* Stats */
     .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .stats.cols-3 { grid-template-columns: repeat(3, 1fr); }
     .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
     .stat-label { font-family: var(--font-mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
     .stat-value { font-family: var(--font-mono); font-size: 26px; font-weight: 500; color: var(--text); line-height: 1; }
@@ -169,7 +170,7 @@
     .day-modal-foot { display: flex; gap: 8px; }
 
     @media (max-width: 600px) {
-      .stats { grid-template-columns: repeat(2, 1fr); }
+      .stats, .stats.cols-3 { grid-template-columns: repeat(2, 1fr); }
       header { flex-direction: column; gap: 4px; }
       .week-label { width: 70px; }
       .tab-btn { padding: 8px 12px 10px; font-size: 11px; }
@@ -329,14 +330,16 @@
   <div class="tab-pane" id="pane-stats">
 
   <div class="stats">
-    <div class="stat"><div class="stat-label">Total apps</div><div class="stat-value accent" id="ss-total">0</div></div>
-    <div class="stat"><div class="stat-label">Active days</div><div class="stat-value" id="s-days">0</div><div class="stat-sub" id="s-avg"></div></div>
-    <div class="stat"><div class="stat-label">Monthly pace</div><div class="stat-value" id="s-pace">—</div><div class="stat-sub" id="s-pace-sub"></div></div>
-    <div class="stat"><div class="stat-label">This week</div><div class="stat-value" id="ss-week">0</div><div class="stat-sub" id="s-bestweek"></div></div>
-    <div class="stat"><div class="stat-label">Weeks on goal</div><div class="stat-value accent" id="s-weekgoal">—</div><div class="stat-sub" id="s-weekgoal-rate"></div></div>
-    <div class="stat"><div class="stat-label">Best week</div><div class="stat-value" id="ss-bestweekval">0</div></div>
-    <div class="stat"><div class="stat-label">Consistency</div><div class="stat-value" id="s-consistency">—</div><div class="stat-sub" id="s-consistency-sub"></div></div>
+    <div class="stat"><div class="stat-label">This week</div><div class="stat-value accent" id="ss-week">0</div><div class="stat-sub" id="s-bestweek"></div></div>
+    <div class="stat"><div class="stat-label">Weekly pace</div><div class="stat-value" id="s-wpace">—</div><div class="stat-sub" id="s-wpace-sub"></div></div>
+    <div class="stat"><div class="stat-label">Best week</div><div class="stat-value" id="ss-bestweekval">0</div><div class="stat-sub">record to beat</div></div>
+    <div class="stat"><div class="stat-label">Weekly goal streak</div><div class="stat-value accent" id="s-wkstreak">—</div><div class="stat-sub" id="s-wkstreak-sub"></div></div>
+  </div>
+
+  <div class="stats cols-3">
+    <div class="stat"><div class="stat-label">Total apps</div><div class="stat-value" id="ss-total">0</div></div>
     <div class="stat"><div class="stat-label">Best day</div><div class="stat-value" id="ss-best">0</div></div>
+    <div class="stat"><div class="stat-label">Active days</div><div class="stat-value" id="s-days">0</div><div class="stat-sub" id="s-avg"></div></div>
   </div>
 
   <div class="chart-wrap">
@@ -706,6 +709,10 @@ function updateGoal() {
         if (d > 0) behind = ` · ${Math.ceil(left/(d+1))}/day`;
       }
       msg = `${left} left · ${tl}${behind}`;
+      if (type === "weekly" && current > 0) {
+        const proj = Math.round(current / (((now.getDay() + 6) % 7) + 1) * 7);
+        msg += ` · ~${proj} by Sun`;
+      }
     }
     document.getElementById("rleg-"+type+"-msg").textContent = msg;
     updateRingTipData(type, current, target, msg);
@@ -774,6 +781,21 @@ function updateStats() {
     else                    { trendEl.textContent = "→ on avg";    trendEl.style.color = "var(--muted)"; }
   } else if (trendEl) { trendEl.textContent = ""; }
 
+  // Weekly pace projection: at the current pace, where the week lands by Sunday
+  const wPaceEl = document.getElementById("s-wpace");
+  if (wPaceEl) {
+    if (weekSum > 0) {
+      const wProjected = Math.round(weekSum / daysIntoWeek * 7);
+      wPaceEl.textContent = wProjected;
+      const wGoalNow = goal.weekly || 0;
+      document.getElementById("s-wpace-sub").textContent =
+        wGoalNow > 0 ? (wProjected >= wGoalNow ? "on track ✓" : `goal: ${wGoalNow}`) : "proj. this week";
+    } else {
+      wPaceEl.textContent = "—";
+      document.getElementById("s-wpace-sub").textContent = "proj. this week";
+    }
+  }
+
   // best week
   let bestWeek = 0;
   mondays.forEach(m => { const t = getWeekTotal(m); if (t > bestWeek) bestWeek = t; });
@@ -793,55 +815,29 @@ function updateStats() {
     sbEl.textContent = "";
   }
 
-  // weeks on goal — each week judged against the weekly goal active back then.
-  // The current partial week is included only once it has already hit its goal.
+  // Weekly goal streak: consecutive most-recent weeks meeting their weekly goal.
+  // The in-progress week counts once it has already hit; a missed completed week ends it.
   const wGoalNow = goal.weekly || 0;
   const completedMondays = mondays.filter(m => m < ws);
   const weekHit = m => { const g = goalOn(m).weekly || 0; return g > 0 && getWeekTotal(m) >= g; };
-  const evalMondays = completedMondays.slice();
-  if (weekHit(ws)) evalMondays.push(ws);
+  const wkStreakEl  = document.getElementById("s-wkstreak");
+  const wkStreakSub = document.getElementById("s-wkstreak-sub");
   if (wGoalNow === 0) {
-    document.getElementById("s-weekgoal").textContent = "—";
-    document.getElementById("s-weekgoal-rate").textContent = "set weekly goal";
-  } else if (evalMondays.length > 0) {
-    const hitWeeks = evalMondays.filter(weekHit).length;
-    document.getElementById("s-weekgoal").textContent = hitWeeks;
-    const rate = Math.round(hitWeeks / evalMondays.length * 100);
-    document.getElementById("s-weekgoal-rate").textContent = `${rate}% of ${evalMondays.length} wk${evalMondays.length !== 1 ? "s" : ""}`;
+    wkStreakEl.textContent = "—";
+    wkStreakSub.textContent = "set weekly goal";
   } else {
-    document.getElementById("s-weekgoal").textContent = "—";
-    document.getElementById("s-weekgoal-rate").textContent = "not enough data";
-  }
-
-  // monthly pace projection
-  const dayOfMonth = now.getDate();
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const prefix = today().slice(0, 7);
-  const monthSoFar = Object.entries(data).filter(([k,v]) => k.startsWith(prefix) && v > 0).reduce((a,[,v])=>a+v, 0);
-  if (monthSoFar > 0 && dayOfMonth > 0) {
-    const projected = Math.round(monthSoFar / dayOfMonth * daysInMonth);
-    document.getElementById("s-pace").textContent = projected;
-    const mGoal = goal.monthly || 0;
-    if (mGoal > 0) {
-      const onTrack = projected >= mGoal;
-      document.getElementById("s-pace-sub").textContent = onTrack ? "on track ✓" : `goal: ${mGoal}`;
-    } else {
-      document.getElementById("s-pace-sub").textContent = "proj. this month";
+    let streak = 0;
+    for (let i = mondays.length - 1; i >= 0; i--) {
+      const m = mondays[i];
+      if (weekHit(m)) streak++;
+      else if (m === ws) continue;  // current week still in progress — don't break the chain
+      else break;                   // a completed week missed — streak ends
     }
-  } else {
-    document.getElementById("s-pace").textContent = "—";
-    document.getElementById("s-pace-sub").textContent = "proj. this month";
-  }
-
-  // consistency: % of weeks with at least 1 application
-  if (mondays.length > 1) {
-    const activeWeeks = completedMondays.filter(m => getWeekTotal(m) > 0).length;
-    const consistencyPct = Math.round(activeWeeks / completedMondays.length * 100);
-    document.getElementById("s-consistency").textContent = consistencyPct + "%";
-    document.getElementById("s-consistency-sub").textContent = `${activeWeeks}/${completedMondays.length} wks active`;
-  } else {
-    document.getElementById("s-consistency").textContent = "—";
-    document.getElementById("s-consistency-sub").textContent = "";
+    wkStreakEl.textContent = streak;
+    const hitCount = completedMondays.filter(weekHit).length;
+    wkStreakSub.textContent = completedMondays.length > 0
+      ? `${hitCount}/${completedMondays.length} wks hit`
+      : "first week in progress";
   }
 }
 
