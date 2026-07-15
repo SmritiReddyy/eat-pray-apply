@@ -775,17 +775,28 @@ function updateStats() {
   const recentWeeks = mondays.filter(m => m < ws).slice(-4);
   const avgRecent = recentWeeks.length ? recentWeeks.reduce((a,m) => a + getWeekTotal(m), 0) / recentWeeks.length : 0;
 
-  // Trend arrow: this week's per-day pace vs the recent weekly average on the same
-  // per-day basis (avgRecent/7), so early-week days aren't unfairly "below avg".
   const daysIntoWeek = Math.max(1, (now.getDay() + 6) % 7 + 1);
-  const thisWeekPace = weekSum / daysIntoWeek;
+
+  // Trend: today's count vs last week's daily average (last week total / 7). The
+  // number is shown so the target is explicit. Falls back to the recent-week
+  // average if last week had no data.
+  const lastWkMonday = parseDate(ws); lastWkMonday.setDate(lastWkMonday.getDate() - 7);
+  const lastWeekTotal = getWeekTotal(fmtDate(lastWkMonday));
+  const benchWeekly = lastWeekTotal > 0 ? lastWeekTotal : avgRecent;
+  const dailyAvg = benchWeekly / 7;
+  const todayCount = data[today()] || 0;
   const trendEl = document.getElementById("s-trend");
-  if (trendEl && recentWeeks.length > 0 && avgRecent > 0) {
-    const ratio = thisWeekPace / (avgRecent / 7);
-    if (ratio >= 1.1)       { trendEl.textContent = "↑ above avg"; trendEl.style.color = "var(--accent)"; }
-    else if (ratio <= 0.9)  { trendEl.textContent = "↓ below avg"; trendEl.style.color = "#f0a500"; }
-    else                    { trendEl.textContent = "→ on avg";    trendEl.style.color = "var(--muted)"; }
-  } else if (trendEl) { trendEl.textContent = ""; }
+  if (trendEl) {
+    if (benchWeekly <= 0) {
+      trendEl.textContent = "";
+    } else {
+      const n = Math.round(dailyAvg);
+      if (todayCount === 0)           { trendEl.textContent = `beat ${n}/day avg`;        trendEl.style.color = "var(--muted)"; }
+      else if (todayCount > dailyAvg) { trendEl.textContent = `↑ above avg · ${n}/day`;   trendEl.style.color = "var(--accent)"; }
+      else if (todayCount < dailyAvg) { trendEl.textContent = `↓ below avg · ${n}/day`;   trendEl.style.color = "#f0a500"; }
+      else                            { trendEl.textContent = `→ on avg · ${n}/day`;      trendEl.style.color = "var(--muted)"; }
+    }
+  }
 
   // Weekly pace projection: at the current pace, where the week lands by Sunday
   const wPaceEl = document.getElementById("s-wpace");
