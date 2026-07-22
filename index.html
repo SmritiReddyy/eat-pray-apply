@@ -147,6 +147,8 @@
     .day-cell.l4 { background: var(--l4); color: #073d1f; }
     .day-cell.l5 { background: var(--l5); color: #073d1f; }
     .day-cell.today { outline: 1.5px solid var(--accent); }
+    .day-mark { position: absolute; top: -4px; right: -4px; width: 12px; height: 12px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8px; line-height: 1; font-family: var(--font-mono); border: 1.5px solid var(--surface); box-sizing: border-box; pointer-events: none; z-index: 1; }
+    .day-mark.hit { background: var(--accent); color: #073d1f; font-weight: 700; }
     .tip { position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: #222; border: 1px solid var(--border2); border-radius: 4px; padding: 5px 9px; white-space: nowrap; font-size: 11px; color: var(--text); pointer-events: none; opacity: 0; transition: opacity 0.15s; z-index: 10; }
     .day-cell:hover .tip { opacity: 1; }
 
@@ -1058,10 +1060,18 @@ function buildGrid() {
       const lvl   = getLevel(count);
       const isToday = key === todayKey ? " today" : "";
       const dayName = date.toLocaleDateString("en-US",{weekday:"short"});
-      const tipText = count > 0 ? `${dayName} ${d}: ${count} app${count!==1?"s":""}` : `${dayName} ${d}`;
+      // Daily-goal marker: only for past/today days that had a daily goal in effect.
+      // Green tick when the goal was met; nothing otherwise.
+      const dGoal = (!viewOnly && key <= todayKey) ? (goalOn(key).daily || 0) : 0;
+      let mark = "", goalTip = "";
+      if (dGoal > 0) {
+        if (count >= dGoal) { mark = `<div class="day-mark hit">✓</div>`; goalTip = ` · goal ${dGoal} ✓`; }
+        else { goalTip = count > 0 ? ` · ${count}/${dGoal} goal` : ` · goal ${dGoal}`; }
+      }
+      const tipText = (count > 0 ? `${dayName} ${d}: ${count} app${count!==1?"s":""}` : `${dayName} ${d}`) + goalTip;
       const cellStyle = viewOnly ? ' style="cursor:default;opacity:0.45"' : '';
       const cellClick = viewOnly ? '' : `onclick="showDayRings('${key}')"`;
-      html += `<div class="day-cell ${lvl}${isToday}" ${cellClick}${cellStyle} data-key="${key}">${d}<div class="tip">${tipText}</div></div>`;
+      html += `<div class="day-cell ${lvl}${isToday}" ${cellClick}${cellStyle} data-key="${key}">${d}<div class="tip">${tipText}</div>${mark}</div>`;
     }
     html += `</div></div>`;
   });
