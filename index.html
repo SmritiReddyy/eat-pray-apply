@@ -217,6 +217,9 @@
     .dow-bar.worst { background: #f0a500; }
     .dow-val { color: var(--text); }
 
+    .chart-pager { display: flex; align-items: center; gap: 8px; }
+    .chart-pager .range-pill:disabled { opacity: 0.3; cursor: default; }
+
     @media (max-width: 600px) {
       .stats, .stats.cols-3 { grid-template-columns: repeat(2, 1fr); }
       .trend-row { grid-template-columns: 28px 1fr; }
@@ -375,6 +378,27 @@
     <div class="week-summary" id="week-summary"></div>
   </div>
 
+  <div class="chart-wrap">
+    <div class="group-head" style="margin-bottom:16px">
+      <div class="section-title" style="margin-bottom:0">Weekly totals</div>
+      <div class="chart-pager">
+        <button class="range-pill" id="wk-older" onclick="pageWeeklyChart(1)" title="Older weeks" aria-label="Older weeks">‹</button>
+        <span class="group-note" id="wk-range"></span>
+        <button class="range-pill" id="wk-newer" onclick="pageWeeklyChart(-1)" title="Newer weeks" aria-label="Newer weeks">›</button>
+      </div>
+    </div>
+    <div class="chart-container">
+      <canvas id="weekly-chart" role="img" aria-label="Bar chart showing weekly job application totals"></canvas>
+    </div>
+  </div>
+
+  <div class="chart-wrap">
+    <div class="section-title">Monthly totals</div>
+    <div class="chart-container" style="height:160px">
+      <canvas id="monthly-chart" role="img" aria-label="Bar chart showing monthly job application totals"></canvas>
+    </div>
+  </div>
+
   </div><!-- end pane-history -->
 
   <!-- ── Tab: Stats ── -->
@@ -455,20 +479,6 @@
     <div class="stats cols-2">
       <div class="stat"><div class="stat-label">Total apps</div><div class="stat-value" id="ss-total">0</div></div>
       <div class="stat"><div class="stat-label">Active days</div><div class="stat-value" id="s-days">0</div><div class="stat-sub" id="s-avg"></div></div>
-    </div>
-  </div>
-
-  <div class="chart-wrap">
-    <div class="section-title">Monthly totals</div>
-    <div class="chart-container" style="height:160px">
-      <canvas id="monthly-chart" role="img" aria-label="Bar chart showing monthly job application totals"></canvas>
-    </div>
-  </div>
-
-  <div class="chart-wrap">
-    <div class="section-title">Weekly totals</div>
-    <div class="chart-container">
-      <canvas id="weekly-chart" role="img" aria-label="Bar chart showing weekly job application totals"></canvas>
     </div>
   </div>
 
@@ -1505,22 +1515,30 @@ function buildMonthlyChart() {
 }
 
 /* ── Weekly chart ── */
+// How many 12-week pages back from the current week the chart is showing (0 = latest)
+let weeklyChartPage = 0;
+const WEEKS_PER_PAGE = 12;
+
+function pageWeeklyChart(step) {
+  weeklyChartPage = Math.max(0, weeklyChartPage + step);
+  buildWeeklyChart();
+}
+
 function buildWeeklyChart() {
-  const todayDate = new Date();
-  const ws = new Date(todayDate);
-  ws.setDate(ws.getDate() - ws.getDay());
+  // 12 Monday–Sunday weeks in local dates, matching the rest of the app
+  const lastMonday = addDays(getWeekStart(today()), -7 * WEEKS_PER_PAGE * weeklyChartPage);
   const weeks = [];
-  for (let i = 11; i >= 0; i--) {
-    const start = new Date(ws);
-    start.setDate(start.getDate() - i * 7);
-    const label = start.toLocaleDateString("en-US",{month:"short",day:"numeric"});
-    let total = 0;
-    for (let d = 0; d < 7; d++) {
-      const day = new Date(start); day.setDate(day.getDate() + d);
-      total += data[toKey(day)] || 0;
-    }
-    weeks.push({ label, total });
+  for (let i = WEEKS_PER_PAGE - 1; i >= 0; i--) {
+    const monday = addDays(lastMonday, -7 * i);
+    weeks.push({ label: shortDate(monday), total: getWeekTotal(monday) });
   }
+  // "older" stops once this page reaches back to the week of the first log
+  const first = firstLogKey();
+  const firstMonday = addDays(lastMonday, -7 * (WEEKS_PER_PAGE - 1));
+  document.getElementById("wk-older").disabled = !first || firstMonday <= getWeekStart(first);
+  document.getElementById("wk-newer").disabled = weeklyChartPage === 0;
+  const yr = k => k.slice(0, 4) === today().slice(0, 4) ? "" : ` '${k.slice(2, 4)}`;
+  setText("wk-range", `${shortDate(firstMonday)}${yr(firstMonday)} – ${shortDate(addDays(lastMonday, 6))}${yr(lastMonday)}`);
   const labels = weeks.map(w => w.label);
   const vals   = weeks.map(w => w.total);
   const maxVal = Math.max(...vals, 1);
@@ -1803,8 +1821,8 @@ function switchTab(name) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('pane-' + name).classList.add('active');
   document.querySelector(`.tab-btn[onclick="switchTab('${name}')"]`).classList.add('active');
-  // rebuild charts when switching to stats so canvas renders at correct size
-  if (name === 'stats') { buildMonthlyChart(); buildWeeklyChart(); }
+  // rebuild charts when switching to history so canvas renders at correct size
+  if (name === 'history') { buildMonthlyChart(); buildWeeklyChart(); }
 }
 
 /* ── Init ── */
