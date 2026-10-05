@@ -167,6 +167,9 @@
     .tab-pane { display: none; flex-direction: column; gap: 1.5rem; }
     .tab-pane.active { display: flex; }
 
+    /* Goal confetti: full-screen overlay that never blocks clicks */
+    .confetti { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 200; }
+
     /* Day-rings modal */
     .day-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: none; align-items: center; justify-content: center; z-index: 100; padding: 1rem; }
     .day-modal.visible { display: flex; }
@@ -1577,10 +1580,96 @@ function clickCell(key) {
   document.getElementById("inp-count").focus();
 }
 
-function showToast(msg) {
+function showToast(msg, ms = 2000) {
   const t = document.getElementById("toast");
   t.textContent = msg; t.classList.add("show");
-  setTimeout(() => t.classList.remove("show"), 2000);
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(() => t.classList.remove("show"), ms);
+}
+
+/* ── Goal confetti ── */
+// Fires only for the current periods (today, this week, this month), and only on the
+// log that crosses the goal, so backfilling old days or logging past a goal stays quiet.
+const CONFETTI_COLORS = { daily: ["#ff453a", "#ff6259"], weekly: ["#ffd60a", "#ffe033"], monthly: ["#3ddc84", "#7fffb3"] };
+const CONFETTI_COUNT  = { daily: 90, weekly: 180, monthly: 320 };
+
+function currentTotals() {
+  const t = today();
+  return { daily: data[t] || 0, weekly: sumRange(getWeekStart(t), t), monthly: sumRange(t.slice(0, 7) + "-01", t) };
+}
+
+// Compares totals from before a log with now; celebrates any goal just crossed.
+// Returns true if it celebrated (so the caller can skip its usual toast).
+function celebrateGoals(before) {
+  const after = currentTotals();
+  const hit = ["daily", "weekly", "monthly"].filter(k => goal[k] > 0 && before[k] < goal[k] && after[k] >= goal[k]);
+  if (!hit.length) return false;
+  const names = hit.join(" + ");
+  showToast(`🎉 ${names.charAt(0).toUpperCase() + names.slice(1)} goal${hit.length > 1 ? "s" : ""} hit!`, 4000);
+  launchConfetti(hit);
+  return true;
+}
+
+// Bigger goals get more confetti: cannons from both bottom corners, plus a shower
+// from the top for a monthly goal. Skipped entirely when the OS asks for reduced motion.
+function launchConfetti(types) {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const canvas = document.createElement("canvas");
+  canvas.className = "confetti";
+  document.body.appendChild(canvas);
+  const W = window.innerWidth, H = window.innerHeight, dpr = window.devicePixelRatio || 1;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  const ctx = canvas.getContext("2d");
+  ctx.scale(dpr, dpr);
+
+  const colors = types.flatMap(t => CONFETTI_COLORS[t]);
+  const count = Math.max(...types.map(t => CONFETTI_COUNT[t]));
+  const power = Math.sqrt(H / 800);   // taller screens need a stronger launch to reach the top
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const pieces = [];
+  const piece = (x, y, vx, vy) => pieces.push({
+    x, y, vx, vy, rot: rand(0, Math.PI * 2), vr: rand(-0.2, 0.2), wob: rand(0, Math.PI * 2),
+    w: rand(6, 11), h: rand(4, 7), color: colors[Math.floor(Math.random() * colors.length)]
+  });
+  const cannon = types.includes("monthly") ? Math.round(count * 0.6) : count;
+  for (let i = 0; i < cannon; i++) {
+    const left = i % 2 === 0;
+    const angle = rand(50, 75) * Math.PI / 180;
+    const speed = rand(14, 24) * power;
+    piece(left ? -10 : W + 10, H + 10, (left ? 1 : -1) * Math.cos(angle) * speed, -Math.sin(angle) * speed);
+  }
+  for (let i = cannon; i < count; i++) piece(rand(0, W), rand(-H * 0.6, -20), rand(-1, 1), rand(2, 4));
+
+  // Timing starts from the first frame's own timestamp: rAF can stamp that frame slightly
+  // before a performance.now() taken here, which would make the first step negative.
+  let start = null, last = null;
+  function frame(now) {
+    if (start === null) start = last = now;
+    const dt = Math.min(3, (now - last) / 16.67) || 1;   // frame-rate independent, capped after tab switches
+    last = now;
+    ctx.clearRect(0, 0, W, H);
+    let alive = 0;
+    for (const p of pieces) {
+      p.vy = Math.min(p.vy + 0.35 * dt, 5);
+      p.vx *= Math.pow(0.985, dt);
+      p.x += (p.vx + Math.sin(p.wob) * 0.6) * dt;
+      p.y += p.vy * dt;
+      p.rot += p.vr * dt;
+      p.wob += 0.1 * dt;
+      if (p.y > H + 20) continue;
+      alive++;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.scale(1, Math.cos(p.wob));   // flutter
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
+    }
+    if (alive && now - start < 8000) requestAnimationFrame(frame);
+    else canvas.remove();
+  }
+  requestAnimationFrame(frame);
 }
 
 function logApps() {
@@ -1588,9 +1677,10 @@ function logApps() {
   const n   = parseInt(document.getElementById("inp-count").value) || 0;
   const t   = today();
   if (!key || n === 0 || key > t) return;
+  const before = currentTotals();
   data[key] = (data[key] || 0) + n;
   save(); render();
-  showToast(`+${n} logged`);
+  if (!celebrateGoals(before)) showToast(`+${n} logged`);
   document.getElementById("inp-count").value = 1;
   // reset date input to today and refresh max (handles tabs open past midnight)
   const inpDate = document.getElementById("inp-date");
@@ -1603,9 +1693,10 @@ function setApps() {
   const key = document.getElementById("inp-date").value;
   const n   = parseInt(document.getElementById("inp-count").value);
   if (!key || isNaN(n) || key > today()) return;
+  const before = currentTotals();
   data[key] = n;
   save(); render();
-  showToast(`set to ${n}`);
+  if (!celebrateGoals(before)) showToast(`set to ${n}`);
 }
 
 /* ── Export ── */
