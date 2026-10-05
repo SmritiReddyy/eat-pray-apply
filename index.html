@@ -41,6 +41,7 @@
     /* Stats */
     .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
     .stats.cols-3 { grid-template-columns: repeat(3, 1fr); }
+    .stats.cols-2 { grid-template-columns: repeat(2, 1fr); }
     .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
     .stat-label { font-family: var(--font-mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
     .stat-value { font-family: var(--font-mono); font-size: 26px; font-weight: 500; color: var(--text); line-height: 1; }
@@ -177,8 +178,47 @@
     .day-modal-body .rings-legend { min-width: 200px; }
     .day-modal-foot { display: flex; gap: 8px; }
 
+    /* Stats tab: grouped cards, trends, week table, weekday chart */
+    .stats-group { display: flex; flex-direction: column; gap: 10px; }
+    .stats-group .section-title { margin-bottom: 0; }
+    .group-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+    .group-note { font-family: var(--font-mono); font-size: 10px; color: var(--muted); line-height: 1.5; }
+    .up { color: var(--accent); }
+    .down { color: #f0a500; }
+    .trend-rows { display: flex; flex-direction: column; }
+    .trend-row { display: grid; grid-template-columns: 28px 1fr minmax(140px, 36%); gap: 14px; align-items: center; padding: 12px 0; border-top: 1px solid var(--border); }
+    .trend-row:first-child { border-top: none; padding-top: 0; }
+    .trend-arrow { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 14px; font-weight: 500; }
+    .trend-arrow.up { background: var(--accent4); color: var(--accent); border: 1px solid var(--accent3); }
+    .trend-arrow.down { background: rgba(240,165,0,0.1); color: #f0a500; border: 1px solid rgba(240,165,0,0.3); }
+    .trend-name { font-size: 13px; color: var(--text); }
+    .trend-coach { font-family: var(--font-mono); font-size: 10px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+    .trend-bars { display: flex; flex-direction: column; gap: 6px; }
+    .trend-bar-row { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 9px; color: var(--muted); }
+    .trend-bar-row .week-bar-track { flex: 1; height: 6px; }
+    .trend-bar-lbl { width: 22px; flex-shrink: 0; }
+    .trend-bar-val { width: 38px; text-align: right; flex-shrink: 0; font-size: 12px; color: var(--text); }
+    .trend-bar-row.prior .trend-bar-val { color: var(--muted); }
+    .wk-table { display: flex; flex-direction: column; gap: 8px; }
+    .wk-row { display: grid; grid-template-columns: 96px 1fr 84px 52px 36px; gap: 10px; align-items: center; font-family: var(--font-mono); font-size: 11px; }
+    .wk-row.head { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+    .wk-row .num { text-align: right; }
+    .wk-row .lbl { color: var(--muted); font-size: 10px; }
+    .wk-total { display: flex; align-items: center; gap: 8px; }
+    .wk-total .week-bar-track { flex: 1; }
+    .wk-total span { width: 26px; text-align: right; flex-shrink: 0; }
+    .dow-chart { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; height: 130px; }
+    .dow-col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 5px; font-family: var(--font-mono); font-size: 10px; color: var(--muted); min-width: 0; }
+    .dow-bar { width: 100%; max-width: 44px; border-radius: 3px 3px 0 0; background: var(--accent3); min-height: 2px; }
+    .dow-bar.best { background: var(--accent); }
+    .dow-bar.worst { background: #f0a500; }
+    .dow-val { color: var(--text); }
+
     @media (max-width: 600px) {
       .stats, .stats.cols-3 { grid-template-columns: repeat(2, 1fr); }
+      .trend-row { grid-template-columns: 28px 1fr; }
+      .trend-bars { grid-column: 2; }
+      .wk-row { grid-template-columns: 62px 1fr 64px 30px 26px; gap: 6px; }
       header { flex-direction: column; gap: 4px; }
       .week-label { width: 70px; }
       .tab-btn { padding: 8px 12px 10px; font-size: 11px; }
@@ -337,17 +377,82 @@
   <!-- ── Tab: Stats ── -->
   <div class="tab-pane" id="pane-stats">
 
-  <div class="stats">
-    <div class="stat"><div class="stat-label">This week</div><div class="stat-value accent" id="ss-week">0</div><div class="stat-sub" id="s-bestweek"></div></div>
-    <div class="stat"><div class="stat-label">Weekly pace</div><div class="stat-value" id="s-wpace">—</div><div class="stat-sub" id="s-wpace-sub"></div></div>
-    <div class="stat"><div class="stat-label">Best week</div><div class="stat-value" id="ss-bestweekval">0</div><div class="stat-sub">record to beat</div></div>
-    <div class="stat"><div class="stat-label">Weekly goal streak</div><div class="stat-value accent" id="s-wkstreak">—</div><div class="stat-sub" id="s-wkstreak-sub"></div></div>
+  <div class="stats-group">
+    <div class="section-title">This week</div>
+    <div class="stats">
+      <div class="stat"><div class="stat-label">So far</div><div class="stat-value accent" id="ss-week">0</div><div class="stat-sub" id="s-bestweek"></div></div>
+      <div class="stat"><div class="stat-label">Last week</div><div class="stat-value" id="ss-lastweek">0</div><div class="stat-sub" id="ss-lastweek-sub"></div></div>
+      <div class="stat"><div class="stat-label">Projected</div><div class="stat-value" id="s-wpace">—</div><div class="stat-sub" id="s-wpace-sub"></div></div>
+      <div class="stat"><div class="stat-label">Last 7 days</div><div class="stat-value" id="ss-roll7">0</div><div class="stat-sub" id="ss-roll7-sub"></div></div>
+    </div>
   </div>
 
-  <div class="stats cols-3">
-    <div class="stat"><div class="stat-label">Total apps</div><div class="stat-value" id="ss-total">0</div></div>
-    <div class="stat"><div class="stat-label">Best day</div><div class="stat-value" id="ss-best">0</div></div>
-    <div class="stat"><div class="stat-label">Active days</div><div class="stat-value" id="s-days">0</div><div class="stat-sub" id="s-avg"></div></div>
+  <div class="stats-group">
+    <div class="section-title">This month</div>
+    <div class="stats cols-3">
+      <div class="stat"><div class="stat-label">So far</div><div class="stat-value accent" id="ss-month">0</div><div class="stat-sub" id="ss-month-sub"></div></div>
+      <div class="stat"><div class="stat-label" id="ss-lastmonth-label">Last month</div><div class="stat-value" id="ss-lastmonth">0</div><div class="stat-sub" id="ss-lastmonth-sub"></div></div>
+      <div class="stat"><div class="stat-label">Projected</div><div class="stat-value" id="ss-mproj">—</div><div class="stat-sub" id="ss-mproj-sub"></div></div>
+    </div>
+  </div>
+
+  <div class="stats-group">
+    <div class="group-head">
+      <div class="section-title">Your rate</div>
+      <div class="range-pills">
+        <button class="range-pill active" data-rate="4"  onclick="setRateRange(4)">4w</button>
+        <button class="range-pill" data-rate="12" onclick="setRateRange(12)">12w</button>
+        <button class="range-pill" data-rate="0"  onclick="setRateRange(0)">all</button>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="stat-label">Per week</div><div class="stat-value accent" id="r-week">—</div><div class="stat-sub">avg apps</div></div>
+      <div class="stat"><div class="stat-label">Per month</div><div class="stat-value" id="r-month">—</div><div class="stat-sub">avg apps</div></div>
+      <div class="stat"><div class="stat-label">Per day</div><div class="stat-value" id="r-day">—</div><div class="stat-sub" id="r-day-sub"></div></div>
+      <div class="stat"><div class="stat-label">Active days / wk</div><div class="stat-value" id="r-active">—</div><div class="stat-sub">of 7</div></div>
+    </div>
+    <div class="group-note" id="r-note"></div>
+  </div>
+
+  <div class="chart-wrap">
+    <div class="section-title" style="margin-bottom:6px">Trends</div>
+    <div class="group-note" id="trend-note" style="margin-bottom:16px"></div>
+    <div class="trend-rows" id="trend-rows"></div>
+  </div>
+
+  <div class="chart-wrap">
+    <div class="section-title">Last 8 weeks</div>
+    <div class="wk-table" id="wk-table"></div>
+  </div>
+
+  <div class="chart-wrap">
+    <div class="section-title" style="margin-bottom:6px">Weekday pattern</div>
+    <div class="group-note" id="dow-note" style="margin-bottom:16px"></div>
+    <div class="dow-chart" id="dow-chart"></div>
+  </div>
+
+  <div class="stats-group">
+    <div class="section-title">Breaks &amp; comebacks</div>
+    <div class="stats cols-3">
+      <div class="stat"><div class="stat-label" id="cb-now-label">Back for</div><div class="stat-value accent" id="cb-now">—</div><div class="stat-sub" id="cb-now-sub"></div></div>
+      <div class="stat"><div class="stat-label">Last break</div><div class="stat-value" id="cb-last">—</div><div class="stat-sub" id="cb-last-sub"></div></div>
+      <div class="stat"><div class="stat-label">Longest break</div><div class="stat-value" id="cb-long">—</div><div class="stat-sub" id="cb-long-sub"></div></div>
+    </div>
+    <div class="group-note">a break = 3+ days in a row with no applications</div>
+  </div>
+
+  <div class="stats-group">
+    <div class="section-title">Personal records</div>
+    <div class="stats">
+      <div class="stat"><div class="stat-label">Best day</div><div class="stat-value" id="ss-best">0</div><div class="stat-sub" id="pr-day-sub"></div></div>
+      <div class="stat"><div class="stat-label">Best week</div><div class="stat-value" id="ss-bestweekval">0</div><div class="stat-sub" id="pr-week-sub"></div></div>
+      <div class="stat"><div class="stat-label">Best month</div><div class="stat-value" id="pr-month">0</div><div class="stat-sub" id="pr-month-sub"></div></div>
+      <div class="stat"><div class="stat-label">Longest streak</div><div class="stat-value" id="pr-streak">0</div><div class="stat-sub" id="pr-streak-sub"></div></div>
+    </div>
+    <div class="stats cols-2">
+      <div class="stat"><div class="stat-label">Total apps</div><div class="stat-value" id="ss-total">0</div></div>
+      <div class="stat"><div class="stat-label">Active days</div><div class="stat-value" id="s-days">0</div><div class="stat-sub" id="s-avg"></div></div>
+    </div>
   </div>
 
   <div class="chart-wrap">
@@ -637,6 +742,7 @@ function saveGoal(type) {
   recordGoalChange();
   updateGoal();
   updateStats();
+  buildInsights();
   buildWeeklyGoalHistory();
   showToast(type + " goal saved");
 }
@@ -820,44 +926,310 @@ function updateStats() {
   mondays.forEach(m => { const t = getWeekTotal(m); if (t > bestWeek) bestWeek = t; });
   document.getElementById("s-bestweekval").textContent  = bestWeek;
   document.getElementById("ss-bestweekval").textContent = bestWeek;
+}
 
-  // this week vs the recent weekly average computed above
-  const sbEl = document.getElementById("s-bestweek");
-  if (recentWeeks.length > 0) {
-    const diff = weekSum - avgRecent;
-    const mag = Math.round(Math.abs(diff));
-    const lbl = `${recentWeeks.length}wk avg`;
-    if (mag === 0)     sbEl.textContent = `→ on ${lbl}`;
-    else if (diff > 0) sbEl.textContent = `↑ ${mag} vs ${lbl}`;
-    else               sbEl.textContent = `↓ ${mag} vs ${lbl}`;
+/* ── Insights (Stats tab) ── */
+const MONTH_DAYS = 30.44;   // average month length, for per-month rates
+const BREAK_DAYS = 3;       // this many zero days in a row counts as a break
+let rateRange = 4;          // weeks in the "Your rate" window; 0 = all time
+
+function addDays(key, n) { const d = parseDate(key); d.setDate(d.getDate() + n); return fmtDate(d); }
+function daysBetween(a, b) { return Math.round((parseDate(b) - parseDate(a)) / 86400000); }
+function sumRange(a, b) { let t = 0; for (let k = a; k <= b; k = addDays(k, 1)) t += data[k] || 0; return t; }
+function activeInRange(a, b) { let n = 0; for (let k = a; k <= b; k = addDays(k, 1)) if ((data[k] || 0) > 0) n++; return n; }
+function firstLogKey() { return Object.keys(data).filter(k => data[k] > 0).sort()[0] || null; }
+function shortDate(key) { return parseDate(key).toLocaleDateString("en-US", { month: "short", day: "numeric" }); }
+function rangeLabel(a, b) { return a === b ? shortDate(a) : `${shortDate(a)} – ${shortDate(b)}`; }
+// Whole numbers from 10 up, one decimal below that ("4.5", "12")
+function fmtNum(x) { return String(x >= 10 ? Math.round(x) : Math.round(x * 10) / 10); }
+function ordinal(n) { const s = ["th", "st", "nd", "rd"], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
+function setText(id, s) { document.getElementById(id).textContent = s; }
+function setHtml(id, s) { document.getElementById(id).innerHTML = s; }
+
+// "↑ 6 vs …" in green, "↓ 3 vs …" in amber, "→ same vs …" in grey
+function deltaSpan(diff, suffix) {
+  const s = suffix ? " " + suffix : "";
+  if (Math.round(diff * 10) === 0) return `<span>→ same${s}</span>`;
+  return diff > 0 ? `<span class="up">↑ ${fmtNum(diff)}${s}</span>` : `<span class="down">↓ ${fmtNum(-diff)}${s}</span>`;
+}
+
+function weekStats(monday) {
+  const end = addDays(monday, 6);
+  const total = sumRange(monday, end);
+  const goalW = goalOn(monday).weekly || 0;
+  return { monday, total, active: activeInRange(monday, end), goal: goalW, hit: goalW > 0 && total >= goalW };
+}
+
+function setRateRange(n) {
+  rateRange = n;
+  document.querySelectorAll(".range-pill[data-rate]").forEach(el => {
+    el.classList.toggle("active", parseInt(el.dataset.rate) === n);
+  });
+  buildInsights();
+}
+
+function buildInsights() {
+  const t = today();
+  const ws = getWeekStart(t);
+  const dayIdx = daysBetween(ws, t);            // 0 = Monday
+  const lastWs = addDays(ws, -7);
+  const first = firstLogKey();
+  const weekdayName = parseDate(t).toLocaleDateString("en-US", { weekday: "short" });
+
+  // ── This week ──
+  // Compare against the same point last week (Mon–same weekday), so a half-finished
+  // week isn't measured against a full one.
+  const weekSoFar = sumRange(ws, t);
+  const lastWeek = weekStats(lastWs);
+  const lastWeekSamePoint = sumRange(lastWs, addDays(lastWs, dayIdx));
+  setHtml("s-bestweek", dayIdx === 6
+    ? deltaSpan(weekSoFar - lastWeek.total, "vs last week")
+    : deltaSpan(weekSoFar - lastWeekSamePoint, `vs ${lastWeekSamePoint} by ${weekdayName} last wk`));
+  setText("ss-lastweek", lastWeek.total);
+  setHtml("ss-lastweek-sub", lastWeek.goal > 0
+    ? (lastWeek.hit ? `<span class="up">goal of ${lastWeek.goal} hit ✓</span>` : `missed goal of ${lastWeek.goal}`)
+    : rangeLabel(lastWs, addDays(lastWs, 6)));
+  const roll7 = sumRange(addDays(t, -6), t);
+  const prev7 = sumRange(addDays(t, -13), addDays(t, -7));
+  setText("ss-roll7", roll7);
+  setHtml("ss-roll7-sub", deltaSpan(roll7 - prev7, "vs prior 7 days"));
+
+  // ── This month ──
+  const [y, m] = t.split("-").map(Number);
+  const dom = Number(t.slice(8));
+  const dim = new Date(y, m, 0).getDate();
+  const monthSoFar = sumRange(t.slice(0, 7) + "-01", t);
+  const lmStart = fmtDate(new Date(y, m - 2, 1));
+  const lmDim = new Date(y, m - 1, 0).getDate();
+  const lastMonthTotal = sumRange(lmStart, addDays(lmStart, lmDim - 1));
+  const lastMonthSamePoint = sumRange(lmStart, addDays(lmStart, Math.min(dom, lmDim) - 1));
+  const lmName = parseDate(lmStart).toLocaleDateString("en-US", { month: "short" });
+  setText("ss-month", monthSoFar);
+  setHtml("ss-month-sub", deltaSpan(monthSoFar - lastMonthSamePoint, `vs ${lastMonthSamePoint} by the ${ordinal(dom)} in ${lmName}`));
+  setText("ss-lastmonth-label", `Last month (${lmName})`);
+  setText("ss-lastmonth", lastMonthTotal);
+  const lmGoal = goalOn(lmStart).monthly || 0;
+  setHtml("ss-lastmonth-sub", lmGoal > 0
+    ? (lastMonthTotal >= lmGoal ? `<span class="up">goal of ${lmGoal} hit ✓</span>` : `missed goal of ${lmGoal}`)
+    : "");
+  if (monthSoFar > 0) {
+    const proj = Math.round(monthSoFar / dom * dim);
+    const mGoal = goal.monthly || 0;
+    setText("ss-mproj", proj);
+    setHtml("ss-mproj-sub", deltaSpan(proj - lastMonthTotal, "vs last month") +
+      (mGoal > 0 ? (proj >= mGoal ? ` · <span class="up">on track ✓</span>` : ` · goal ${mGoal}`) : ""));
   } else {
-    sbEl.textContent = "";
+    setText("ss-mproj", "—");
+    setText("ss-mproj-sub", "log to see a projection");
   }
 
-  // Weekly goal streak: consecutive most-recent weeks meeting their weekly goal.
-  // The in-progress week counts once it has already hit; a missed completed week ends it.
-  const wGoalNow = goal.weekly || 0;
-  const completedMondays = mondays.filter(m => m < ws);
-  const weekHit = m => { const g = goalOn(m).weekly || 0; return g > 0 && getWeekTotal(m) >= g; };
-  const wkStreakEl  = document.getElementById("s-wkstreak");
-  const wkStreakSub = document.getElementById("s-wkstreak-sub");
-  if (wGoalNow === 0) {
-    wkStreakEl.textContent = "—";
-    wkStreakSub.textContent = "set weekly goal";
+  // ── Your rate ──
+  // Uses completed weeks only (through last Sunday) so the in-progress week doesn't
+  // drag the average down; falls back to "so far" during the very first week.
+  if (!first) {
+    ["r-week", "r-month", "r-day", "r-active"].forEach(id => setText(id, "—"));
+    setText("r-day-sub", ""); setText("r-note", "log some applications to see your rate");
   } else {
-    let streak = 0;
-    for (let i = mondays.length - 1; i >= 0; i--) {
-      const m = mondays[i];
-      if (weekHit(m)) streak++;
-      else if (m === ws) continue;  // current week still in progress — don't break the chain
-      else break;                   // a completed week missed — streak ends
+    let rEnd = addDays(ws, -1);
+    let rStart = rateRange === 0 ? first : addDays(ws, -7 * rateRange);
+    if (rStart < first) rStart = first;
+    let partial = false;
+    if (rEnd < rStart) { rStart = first; rEnd = t; partial = true; }
+    const days = daysBetween(rStart, rEnd) + 1;
+    const tot = sumRange(rStart, rEnd);
+    const act = activeInRange(rStart, rEnd);
+    const perDay = tot / days;
+    setText("r-week", fmtNum(perDay * 7));
+    setText("r-month", fmtNum(perDay * MONTH_DAYS));
+    setText("r-day", fmtNum(perDay));
+    setText("r-day-sub", act ? `${fmtNum(tot / act)} on days you apply` : "");
+    setText("r-active", fmtNum(act / days * 7));
+    setText("r-note", `${rangeLabel(rStart, rEnd)} · ${days} days · ${tot} apps` +
+      (partial ? " · first week, so far" : " · completed weeks only"));
+  }
+
+  // ── Trends (iPhone Fitness style) ──
+  // Last 4 completed weeks vs the up-to-12 weeks before them. A metric is "up" if the
+  // recent average is at or above the earlier one; "down" metrics get a concrete
+  // target for this week that would pull the 4-week average back up.
+  const completed = getAllWeekMondays().filter(mo => mo < ws).map(weekStats);
+  const recent = completed.slice(-4);
+  const prior = completed.slice(-16, -4);
+  if (recent.length < 4 || prior.length < 1) {
+    setText("trend-note", `Trends compare your last 4 weeks with the weeks before. Check back after ${5 - completed.length} more completed week${5 - completed.length === 1 ? "" : "s"}.`);
+    setHtml("trend-rows", "");
+  } else {
+    const avgOf = (arr, f) => arr.reduce((a, w) => a + f(w), 0) / arr.length;
+    const perActive = arr => { const a = arr.reduce((s, w) => s + w.active, 0); return a ? arr.reduce((s, w) => s + w.total, 0) / a : 0; };
+    const stay = recent.slice(1);   // the 3 weeks still in the window once this week completes
+    const daysLeft = 7 - dayIdx;
+    const activeSoFar = activeInRange(ws, t);
+    const ceilSafe = x => Math.ceil(x - 1e-9);
+
+    const metrics = [
+      {
+        name: "Apps per week",
+        r: avgOf(recent, w => w.total), p: avgOf(prior, w => w.total), fmt: fmtNum,
+        coach(p) {
+          const need = ceilSafe(4 * p - stay.reduce((a, w) => a + w.total, 0));
+          const more = need - weekSoFar;
+          if (more <= 0) return `This week (${weekSoFar}) already turns it around ✓`;
+          return `Get this week to ${need}: ${more} more, about ${Math.ceil(more / daysLeft)}/day, to turn it around`;
+        }
+      },
+      {
+        name: "Active days per week",
+        r: avgOf(recent, w => w.active), p: avgOf(prior, w => w.active), fmt: fmtNum,
+        coach(p) {
+          const need = Math.max(1, ceilSafe(4 * p - stay.reduce((a, w) => a + w.active, 0)));
+          const left = daysLeft - ((data[t] || 0) > 0 ? 1 : 0);
+          if (need <= activeSoFar) return `Already on track this week ✓`;
+          if (need - activeSoFar > left) return `Apply every remaining day this week to close the gap`;
+          return `Apply on ${need} days this week (${need - activeSoFar} more) to turn it around`;
+        }
+      },
+      {
+        name: "Apps per active day",
+        r: perActive(recent), p: perActive(prior), fmt: fmtNum,
+        coach(p) { return `Aim for ${Math.ceil(p)}+ on the days you apply`; }
+      }
+    ];
+    if ([...recent, ...prior].some(w => w.goal > 0)) {
+      const rate = arr => { const g = arr.filter(w => w.goal > 0); return g.length ? g.filter(w => w.hit).length / g.length * 100 : 0; };
+      const gNow = goalOn(ws).weekly || 0;
+      metrics.push({
+        name: "Weekly goal hit rate",
+        r: rate(recent), p: rate(prior), fmt: x => Math.round(x) + "%",
+        coach() {
+          if (!gNow) return "Set a weekly goal to track this";
+          return weekSoFar >= gNow ? `This week's goal is already hit ✓` : `Hit this week's goal of ${gNow} (${gNow - weekSoFar} to go)`;
+        }
+      });
     }
-    wkStreakEl.textContent = streak;
-    const hitCount = completedMondays.filter(weekHit).length;
-    wkStreakSub.textContent = completedMondays.length > 0
-      ? `${hitCount}/${completedMondays.length} wks hit`
-      : "first week in progress";
+
+    setText("trend-note", `Last 4 weeks (${rangeLabel(recent[0].monday, addDays(ws, -1))}) vs the ${prior.length} week${prior.length === 1 ? "" : "s"} before`);
+    setHtml("trend-rows", metrics.map(mt => {
+      const up = mt.r >= mt.p;
+      const max = Math.max(mt.r, mt.p, 0.0001);
+      const coach = up ? `Keep it up. You're ahead of your earlier ${mt.fmt(mt.p)}` : mt.coach(mt.p);
+      return `<div class="trend-row">
+        <div class="trend-arrow ${up ? "up" : "down"}">${up ? "↑" : "↓"}</div>
+        <div><div class="trend-name">${mt.name}</div><div class="trend-coach">${coach}</div></div>
+        <div class="trend-bars">
+          <div class="trend-bar-row"><span class="trend-bar-lbl">4w</span><div class="week-bar-track"><div class="week-bar-fill" style="width:${mt.r / max * 100}%;background:${up ? "var(--accent)" : "#f0a500"}"></div></div><span class="trend-bar-val">${mt.fmt(mt.r)}</span></div>
+          <div class="trend-bar-row prior"><span class="trend-bar-lbl">${prior.length}w</span><div class="week-bar-track"><div class="week-bar-fill" style="width:${mt.p / max * 100}%;background:#4a544c"></div></div><span class="trend-bar-val">${mt.fmt(mt.p)}</span></div>
+        </div>
+      </div>`;
+    }).join(""));
   }
+
+  // ── Last 8 weeks ──
+  const last8 = getAllWeekMondays().slice(-8).reverse().map(mo => ({ ...weekStats(mo), prev: weekStats(addDays(mo, -7)).total }));
+  if (!last8.length) {
+    setHtml("wk-table", `<div class="group-note">no weeks logged yet</div>`);
+  } else {
+    const max8 = Math.max(...last8.map(w => Math.max(w.total, w.goal)), 1);
+    setHtml("wk-table", `<div class="wk-row head"><span>Week</span><span>Apps</span><span class="num">Change</span><span class="num">Days</span><span class="num">Goal</span></div>` +
+      last8.map(w => {
+        const isCur = w.monday === ws;
+        const change = isCur ? deltaSpan(weekSoFar - lastWeekSamePoint, "") : deltaSpan(w.total - w.prev, "");
+        const goalCell = w.hit ? `<span class="up">✓</span>` : (isCur || !w.goal) ? "·" : `<span class="down">✗</span>`;
+        return `<div class="wk-row">
+          <span class="lbl">${isCur ? "this week" : shortDate(w.monday)}</span>
+          <div class="wk-total"><div class="week-bar-track"><div class="week-bar-fill${w.hit ? " hit" : ""}" style="width:${w.total / max8 * 100}%"></div></div><span>${w.total}</span></div>
+          <span class="num" title="${isCur ? "vs the same point last week" : "vs the week before"}">${change}</span>
+          <span class="num">${w.active}/${isCur ? dayIdx + 1 : 7}</span>
+          <span class="num">${goalCell}</span>
+        </div>`;
+      }).join(""));
+  }
+
+  // ── Weekday pattern ── (all days since you started, through yesterday)
+  const dowEnd = addDays(t, -1);
+  if (!first || first > dowEnd) {
+    setText("dow-note", "needs at least one full day of history");
+    setHtml("dow-chart", "");
+  } else {
+    const names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const sums = Array(7).fill(0), counts = Array(7).fill(0), actives = Array(7).fill(0);
+    for (let k = first; k <= dowEnd; k = addDays(k, 1)) {
+      const i = (parseDate(k).getDay() + 6) % 7;
+      sums[i] += data[k] || 0; counts[i]++; if ((data[k] || 0) > 0) actives[i]++;
+    }
+    const avgs = sums.map((s, i) => counts[i] ? s / counts[i] : 0);
+    const maxA = Math.max(...avgs, 0.0001);
+    const best = avgs.indexOf(Math.max(...avgs));
+    const worst = avgs.indexOf(Math.min(...avgs));
+    setText("dow-note", `Average apps per weekday since ${shortDate(first)}. Strongest: ${names[best]} (${fmtNum(avgs[best])}). Weakest: ${names[worst]} (${fmtNum(avgs[worst])}).`);
+    setHtml("dow-chart", avgs.map((a, i) => `<div class="dow-col" title="${names[i]}: ${fmtNum(a)} avg · applied on ${actives[i]} of ${counts[i]}">
+        <span class="dow-val">${fmtNum(a)}</span>
+        <div class="dow-bar${i === best ? " best" : i === worst ? " worst" : ""}" style="height:${a / maxA * 85}px"></div>
+        <span>${names[i]}</span>
+      </div>`).join(""));
+  }
+
+  // ── Breaks & comebacks ──
+  // Today is excluded from break detection until it's over (a 0 this morning isn't a break yet).
+  const breaks = [];
+  let runStart = null, runLen = 0;
+  if (first) {
+    for (let k = first; k <= t; k = addDays(k, 1)) {
+      if ((data[k] || 0) > 0) {
+        if (runLen >= BREAK_DAYS) breaks.push({ start: runStart, end: addDays(runStart, runLen - 1), len: runLen });
+        runLen = 0;
+      } else if (k < t) {
+        if (runLen === 0) runStart = k;
+        runLen++;
+      }
+    }
+  }
+  const lastBreak = breaks[breaks.length - 1];
+  const longest = breaks.reduce((b, x) => (!b || x.len > b.len ? x : b), null);
+  if (runLen >= BREAK_DAYS) {
+    setText("cb-now-label", "On a break");
+    setHtml("cb-now", `<span class="down">${runLen}d</span>`);
+    setText("cb-now-sub", lastBreak ? `your last one was ${lastBreak.len}d. Log one today to end it` : "log one today to end it");
+  } else if (lastBreak) {
+    setText("cb-now-label", "Back for");
+    setText("cb-now", `${daysBetween(lastBreak.end, t)}d`);
+    setText("cb-now-sub", `since your break ended ${shortDate(addDays(lastBreak.end, 1))}`);
+  } else {
+    setText("cb-now-label", "No breaks yet");
+    setText("cb-now", first ? `${daysBetween(first, t) + 1}d` : "—");
+    setText("cb-now-sub", first ? "without a 3+ day gap" : "");
+  }
+  if (lastBreak) {
+    const backStart = addDays(lastBreak.end, 1);
+    const backEnd = addDays(backStart, 6) < t ? addDays(backStart, 6) : t;
+    setText("cb-last", `${lastBreak.len}d`);
+    setText("cb-last-sub", `${rangeLabel(lastBreak.start, lastBreak.end)} · ${sumRange(backStart, backEnd)} apps in the first week back`);
+    setText("cb-long", `${longest.len}d`);
+    setText("cb-long-sub", `${rangeLabel(longest.start, longest.end)} · ${breaks.length} break${breaks.length === 1 ? "" : "s"} total`);
+  } else {
+    setText("cb-last", "—"); setText("cb-last-sub", "");
+    setText("cb-long", "—"); setText("cb-long-sub", "");
+  }
+
+  // ── Personal records ──
+  const days = Object.entries(data).filter(([, v]) => v > 0).sort(([a], [b]) => a < b ? -1 : 1);
+  const bestDay = days.reduce((b, d) => (!b || d[1] > b[1] ? d : b), null);
+  setText("pr-day-sub", bestDay ? shortDate(bestDay[0]) + (bestDay[0] === t ? " · that's today 🎉" : ` · ${bestDay[1] + 1}+ in a day beats it`) : "");
+  const weeksAll = getAllWeekMondays().map(mo => ({ monday: mo, total: getWeekTotal(mo) }));
+  const bestWeek = weeksAll.reduce((b, w) => (!b || w.total > b.total ? w : b), null);
+  setText("pr-week-sub", bestWeek ? (bestWeek.monday === ws ? "that's this week 🎉" : `${rangeLabel(bestWeek.monday, addDays(bestWeek.monday, 6))} · ${bestWeek.total - weekSoFar + 1} more this week beats it`) : "");
+  const months = {};
+  days.forEach(([k, v]) => { months[k.slice(0, 7)] = (months[k.slice(0, 7)] || 0) + v; });
+  const bestMonth = Object.entries(months).reduce((b, mo) => (!b || mo[1] > b[1] ? mo : b), null);
+  setText("pr-month", bestMonth ? bestMonth[1] : 0);
+  setText("pr-month-sub", bestMonth ? parseDate(bestMonth[0] + "-01").toLocaleDateString("en-US", { month: "long", year: "numeric" }) + (bestMonth[0] === t.slice(0, 7) ? " 🎉" : "") : "");
+  let sBest = { len: 0 }, sStart = null, sLen = 0, prev = null;
+  days.forEach(([k]) => {
+    if (prev && daysBetween(prev, k) === 1) sLen++; else { sStart = k; sLen = 1; }
+    if (sLen > sBest.len) sBest = { len: sLen, start: sStart, end: k };
+    prev = k;
+  });
+  setText("pr-streak", sBest.len ? `${sBest.len}d` : "0");
+  setText("pr-streak-sub", sBest.len ? rangeLabel(sBest.start, sBest.end) : "");
 }
 
 /* ── Weekly goal history ── */
@@ -865,7 +1237,7 @@ let historyRange = 6;
 
 function setHistoryRange(n) {
   historyRange = n;
-  document.querySelectorAll(".range-pill").forEach(el => {
+  document.querySelectorAll(".week-history .range-pill").forEach(el => {
     el.classList.toggle("active", parseInt(el.dataset.range) === n);
   });
   buildWeeklyGoalHistory();
@@ -1189,6 +1561,7 @@ function render() {
   inpDate.max = t;
   if (inpDate.value > t) inpDate.value = t;
   updateStats();
+  buildInsights();
   updateStreak();
   updateGoal();
   buildWeeklyGoalHistory();

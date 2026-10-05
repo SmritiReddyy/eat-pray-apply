@@ -4,7 +4,7 @@
 
 A job application tracker that works like a GitHub contribution graph — except the only person judging your consistency is you.
 
-**Live:** [smritireddyy.github.io/job-tracker](https://smritireddyy.github.io/job-tracker/)
+**Live:** [smritireddyy.github.io/eat-pray-apply](https://smritireddyy.github.io/eat-pray-apply/)
 
 ---
 
