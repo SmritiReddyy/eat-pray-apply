@@ -12,6 +12,8 @@ A job application tracker that works like a GitHub contribution graph — except
 
 **Activity rings** — three concentric rings (daily / weekly / monthly), Apple Fitness-style. They fill as you log. Hover any ring and it tells you exactly where you stand and how many you need per hour or day to still hit the goal.
 
+**Suggested goals** — under each ring, a goal 10% above what you've actually been doing lately. Click it to fill the box. Ambitious, not delusional.
+
 **Goal confetti** — cross your daily, weekly, or monthly goal and the screen throws a party in that ring's color. Bigger goal, bigger party. Hit all three in one log and it gets a little out of hand.
 
 **Contribution heatmap** — every day since you started, color-coded by volume. One glance tells you where you went dark and where you were unstoppable. Days that hit your daily goal get a green tick. Click any cell to see that day's rings or log for it.
@@ -23,6 +25,10 @@ A job application tracker that works like a GitHub contribution graph — except
 **Trend arrow** — compares today against last week's daily average. ↑ means you're having a good day. ↓ means you already know.
 
 **Streak counter** — current streak, longest streak, and a week-over-week comparison. Missing a day hurts more when a number is watching.
+
+**Never miss twice** — skip a day and the Log tab notices. One day off is fine. Two is how habits die, so it says so before that happens.
+
+**Weekly recap** — first time you open the app each week, last week pops up in one card: total, change from the week before, best day, goal hit or miss, any records broken, and a one-line verdict. Close it and it parks at the bottom of the Log tab for the rest of the week. Save it as an image if it's worth bragging about.
 
 **Stats tab** — your actual rate: average apps per week, per month, and per day, over the last 4 weeks, 12 weeks, or all time. This week vs the same point last week, this month vs the same date last month, and where both will land at your current pace. Everything you need to know about your job search without opening a spreadsheet.
 

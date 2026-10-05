@@ -32,6 +32,7 @@
       --font-sans: 'DM Sans', sans-serif;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    [hidden] { display: none !important; }
     body { background: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: 14px; min-height: 100vh; padding: 2rem 1.5rem 4rem; }
     header { max-width: 860px; margin: 0 auto 2.5rem; display: flex; align-items: baseline; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 1rem; }
     header h1 { font-family: var(--font-mono); font-size: 15px; font-weight: 500; color: var(--accent); letter-spacing: 0.04em; }
@@ -217,6 +218,27 @@
     .dow-bar.worst { background: #f0a500; }
     .dow-val { color: var(--text); }
 
+    /* Never-miss-twice nudge */
+    .nudge { background: rgba(240,165,0,0.08); border: 1px solid rgba(240,165,0,0.3); border-radius: var(--radius); padding: 10px 16px; font-family: var(--font-mono); font-size: 12px; color: #f0a500; }
+    /* Suggested goal under each ring legend row */
+    .goal-suggest { align-self: flex-start; margin-left: 15px; background: transparent; border: none; padding: 0; font-family: var(--font-mono); font-size: 10px; color: var(--accent2); cursor: pointer; }
+    .goal-suggest:hover { color: var(--accent); text-decoration: underline; }
+    /* Weekly recap card */
+    .recap { background: var(--surface); border: 1px solid var(--accent3); border-radius: var(--radius); padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; }
+    .recap-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+    .recap-title { font-family: var(--font-mono); font-size: 11px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em; }
+    .recap-actions { display: flex; align-items: center; gap: 6px; }
+    .recap-close { background: transparent; border: none; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; padding: 0 2px; }
+    .recap-close:hover { color: var(--text); }
+    .recap-main { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; font-family: var(--font-mono); font-size: 12px; }
+    .recap-total { font-size: 34px; font-weight: 500; color: var(--text); line-height: 1; }
+    .recap-facts { display: flex; flex-wrap: wrap; gap: 6px 18px; font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+    .recap-facts strong { color: var(--text); font-weight: 500; }
+    .recap-records { font-family: var(--font-mono); font-size: 11px; color: var(--accent); }
+    .recap-verdict { font-size: 14px; color: var(--text); font-style: italic; }
+    .recap-modal-card { gap: 12px; border-color: var(--accent3); }
+    .recap-modal-card .recap-verdict { font-size: 16px; }
+
     .chart-pager { display: flex; align-items: center; gap: 8px; }
     .chart-pager .range-pill:disabled { opacity: 0.3; cursor: default; }
 
@@ -248,6 +270,7 @@
 
   <!-- ── Tab: Log ── -->
   <div class="tab-pane active" id="pane-log">
+
 
   <!-- Activity rings -->
   <div class="rings-wrap">
@@ -302,6 +325,7 @@
           </div>
         </div>
         <div class="ring-leg-msg" id="rleg-daily-msg"></div>
+        <button class="goal-suggest" id="sug-daily" onclick="useSuggestedGoal('daily')" hidden></button>
       </div>
       <!-- weekly -->
       <div class="ring-leg">
@@ -316,6 +340,7 @@
           </div>
         </div>
         <div class="ring-leg-msg" id="rleg-weekly-msg"></div>
+        <button class="goal-suggest" id="sug-weekly" onclick="useSuggestedGoal('weekly')" hidden></button>
       </div>
       <!-- monthly -->
       <div class="ring-leg">
@@ -330,11 +355,14 @@
           </div>
         </div>
         <div class="ring-leg-msg" id="rleg-monthly-msg"></div>
+        <button class="goal-suggest" id="sug-monthly" onclick="useSuggestedGoal('monthly')" hidden></button>
       </div>
     </div>
   </div>
 
   <div class="streak-bar" id="streak-bar"></div>
+
+  <div class="nudge" id="nudge" hidden></div>
 
   <div class="log-row">
     <span class="log-label">Log</span>
@@ -355,6 +383,9 @@
     <div class="stat"><div class="stat-label">Best day</div><div class="stat-value" id="s-best">0</div></div>
     <div class="stat"><div class="stat-label">Best week</div><div class="stat-value" id="s-bestweekval">0</div></div>
   </div>
+
+  <!-- Weekly recap: pops up once a week, then lives here until the next one -->
+  <div class="recap" id="recap" hidden></div>
 
   </div><!-- end pane-log -->
 
@@ -448,7 +479,10 @@
   </div>
 
   <div class="chart-wrap">
-    <div class="section-title">Last 8 weeks</div>
+    <div class="group-head" style="margin-bottom:16px">
+      <div class="section-title" style="margin-bottom:0">Last 8 weeks</div>
+      <button class="range-pill" onclick="openRecapPopup()">last week's recap</button>
+    </div>
     <div class="wk-table" id="wk-table"></div>
   </div>
 
@@ -485,6 +519,11 @@
   </div><!-- end pane-stats -->
 
 </main>
+
+<!-- Weekly recap pop-up -->
+<div class="day-modal" id="recap-modal" onclick="if(event.target===this)closeRecapPopup()">
+  <div class="day-modal-card recap-modal-card" id="recap-modal-card"></div>
+</div>
 
 <!-- Per-day rings modal -->
 <div class="day-modal" id="day-modal" onclick="if(event.target===this)closeDayRings()">
@@ -844,6 +883,7 @@ function updateGoal() {
     document.getElementById("rleg-"+type+"-msg").textContent = msg;
     updateRingTipData(type, current, target, msg);
   });
+  updateGoalSuggestions();
 }
 
 /* ── Stats ── */
@@ -1245,6 +1285,192 @@ function buildInsights() {
   setText("pr-streak-sub", sBest.len ? rangeLabel(sBest.start, sBest.end) : "");
 }
 
+/* ── Never miss twice ── */
+// One empty day is fine; two in a row is how habits break. Shows only while today is
+// still empty and at least yesterday was empty too.
+function updateNudge() {
+  const el = document.getElementById("nudge");
+  const t = today(), first = firstLogKey();
+  let gap = 0;
+  if (first && first < t && !((data[t] || 0) > 0)) {
+    for (let k = addDays(t, -1); k >= first && !((data[k] || 0) > 0); k = addDays(k, -1)) gap++;
+  }
+  el.hidden = gap === 0;
+  el.textContent = gap === 1
+    ? "Yesterday was a day off. Fine. Just don't make it two."
+    : `${gap} days off in a row. Today breaks the run — even one application counts.`;
+}
+
+/* ── Suggested goals ── */
+// 10% above your average over the last 4 completed weeks (needs at least 2), rounded
+// to friendly numbers. Clicking fills the goal box; nothing changes until you hit set.
+function goalSuggestions() {
+  const ws = getWeekStart(today());
+  const weeks = getAllWeekMondays().filter(m => m < ws).slice(-4).map(weekStats);
+  const total = weeks.reduce((a, w) => a + w.total, 0);
+  const active = weeks.reduce((a, w) => a + w.active, 0);
+  if (weeks.length < 2 || !total) return null;
+  const nice = (x, step) => Math.max(step, Math.round(x / step) * step);
+  return {
+    daily:   nice(total / active * 1.1, 1),
+    weekly:  nice(total / weeks.length * 1.1, 5),
+    monthly: nice(total / (weeks.length * 7) * MONTH_DAYS * 1.1, 10),
+    weeks:   weeks.length
+  };
+}
+
+function updateGoalSuggestions() {
+  const sug = goalSuggestions();
+  ["daily", "weekly", "monthly"].forEach(type => {
+    const el = document.getElementById("sug-" + type);
+    el.hidden = !sug || sug[type] === goal[type];
+    if (el.hidden) return;
+    el.textContent = `suggested: ${sug[type]}`;
+    el.dataset.value = sug[type];
+    el.title = `10% above your average over the last ${sug.weeks} weeks. Click to fill it in, then hit set.`;
+  });
+}
+
+function useSuggestedGoal(type) {
+  const input = document.getElementById("goal-input-" + type);
+  input.value = document.getElementById("sug-" + type).dataset.value;
+  input.focus();
+}
+
+/* ── Weekly recap ── */
+// Last week in one card. It pops up the first time the app opens in a new week, then
+// sits at the bottom of the Log tab until the next week's recap replaces it. "Seen" is a
+// per-browser convenience, so it lives in localStorage keyed by that week's Monday.
+const RECAP_SEEN_KEY = "smriti_job_tracker_recap_seen_v1";
+
+function lastWeekMonday() { return addDays(getWeekStart(today()), -7); }
+
+// Null until there's history reaching back into last week
+function lastWeekRecap() {
+  const first = firstLogKey(), monday = lastWeekMonday();
+  return first && first <= addDays(monday, 6) ? weekRecap(monday) : null;
+}
+const WEEKDAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+function weekRecap(monday) {
+  const w = weekStats(monday);
+  const prevTotal = weekStats(addDays(monday, -7)).total;
+  const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
+  const bestIdx = days.reduce((b, k, i) => ((data[k] || 0) > (data[days[b]] || 0) ? i : b), 0);
+  const bestCount = data[days[bestIdx]] || 0;
+  const dailyHits = days.filter(k => { const g = goalOn(k).daily || 0; return g > 0 && (data[k] || 0) >= g; }).length;
+  // Records only count if there was history before this week to beat
+  const earlier = Object.entries(data).filter(([k, v]) => k < monday && v > 0);
+  const records = [];
+  if (earlier.length) {
+    const prevBestWeek = Math.max(0, ...getAllWeekMondays().filter(m => m < monday).map(getWeekTotal));
+    const prevBestDay = Math.max(0, ...earlier.map(([, v]) => v));
+    if (w.total > prevBestWeek) records.push("New best week");
+    if (bestCount > prevBestDay) records.push("New best day");
+  }
+  const r = { monday, ...w, prevTotal, bestDay: WEEKDAY_NAMES[bestIdx], bestCount, dailyHits, records };
+  r.verdict = recapVerdict(r);
+  return r;
+}
+
+function recapVerdict(r) {
+  if (r.total === 0) return "A full week off. This one starts now.";
+  if (r.records.includes("New best week")) return "Your best week ever. Frame it.";
+  const up = r.total > r.prevTotal;
+  if (r.hit && up) return "Goal hit and trending up. Keep the pressure on.";
+  if (r.hit) return "Goal hit. Now do it again.";
+  if (up) return "Better than the week before. That's the whole game.";
+  if (r.total === r.prevTotal) return "Same as the week before. Steady counts.";
+  return "Down from the week before. Monday's a clean slate.";
+}
+
+function recapHtml(r, inPopup) {
+  const diff = r.total - r.prevTotal;
+  const goalFact = r.goal > 0
+    ? (r.hit ? `<span class="up">weekly goal ✓</span> (${r.goal})` : `weekly goal missed by <strong>${r.goal - r.total}</strong>`)
+    : "";
+  const close = inPopup ? `<button class="recap-close" onclick="closeRecapPopup()" aria-label="Close recap" title="Close">&times;</button>` : "";
+  return `
+    <div class="recap-head">
+      <div class="recap-title">Last week · ${rangeLabel(r.monday, addDays(r.monday, 6))}</div>
+      <div class="recap-actions">
+        <button class="range-pill" onclick="saveRecapImage()">save image</button>
+        ${close}
+      </div>
+    </div>
+    <div class="recap-main"><span class="recap-total">${r.total}</span><span>apps</span>${r.prevTotal || r.total ? deltaSpan(diff, `vs ${r.prevTotal} the week before`) : ""}</div>
+    <div class="recap-facts">
+      <span>active days <strong>${r.active}/7</strong></span>
+      ${r.bestCount ? `<span>best day <strong>${r.bestDay} (${r.bestCount})</strong></span>` : ""}
+      ${goalFact ? `<span>${goalFact}</span>` : ""}
+      <span>daily goal hit <strong>${r.dailyHits}</strong> day${r.dailyHits === 1 ? "" : "s"}</span>
+    </div>
+    ${r.records.length ? `<div class="recap-records">🏆 ${r.records.join(" · ")}</div>` : ""}
+    <div class="recap-verdict">${r.verdict}</div>`;
+}
+
+// The card at the bottom of the Log tab — always there once last week has a recap
+function renderRecap() {
+  const el = document.getElementById("recap");
+  const r = lastWeekRecap();
+  el.hidden = !r;
+  if (r) el.innerHTML = recapHtml(r, false);
+}
+
+function openRecapPopup() {
+  const r = lastWeekRecap();
+  if (!r) return;
+  document.getElementById("recap-modal-card").innerHTML = recapHtml(r, true);
+  document.getElementById("recap-modal").classList.add("visible");
+}
+
+function closeRecapPopup() {
+  document.getElementById("recap-modal").classList.remove("visible");
+  try { localStorage.setItem(RECAP_SEEN_KEY, lastWeekMonday()); } catch (e) {}
+}
+
+// Called once on load: pops the recap up the first time the app opens in a new week
+function maybeShowRecapPopup() {
+  let seen = null;
+  try { seen = localStorage.getItem(RECAP_SEEN_KEY); } catch (e) {}
+  if (seen !== lastWeekMonday()) openRecapPopup();
+}
+
+// Draws the recap onto a 1200×630 canvas (a standard share-image size) and downloads it.
+async function saveRecapImage() {
+  const r = weekRecap(lastWeekMonday());
+  try { await Promise.all([document.fonts.load('500 40px "DM Mono"'), document.fonts.load('italic 300 30px "DM Sans"')]); } catch (e) {}
+  const W = 1200, H = 630;
+  const c = document.createElement("canvas");
+  c.width = W; c.height = H;
+  const x = c.getContext("2d");
+  const mono = (size, weight = 400) => `${weight} ${size}px "DM Mono", monospace`;
+  x.fillStyle = "#0d0f0e"; x.fillRect(0, 0, W, H);
+  x.fillStyle = "#141716"; x.strokeStyle = "#0d5c30"; x.lineWidth = 2;
+  x.beginPath(); x.roundRect(40, 40, W - 80, H - 80, 16); x.fill(); x.stroke();
+  x.textBaseline = "alphabetic";
+  x.fillStyle = "#3ddc84"; x.font = mono(26, 500); x.fillText("eat-pray-apply", 90, 115);
+  x.fillStyle = "#96a898"; x.font = mono(22);
+  x.fillText(`week of ${rangeLabel(r.monday, addDays(r.monday, 6))}`, 90, 155);
+  x.fillStyle = "#f0f5f1"; x.font = mono(150, 500); x.fillText(String(r.total), 84, 320);
+  const totalW = x.measureText(String(r.total)).width;
+  x.fillStyle = "#96a898"; x.font = mono(32); x.fillText("apps", 84 + totalW + 20, 320);
+  const diff = r.total - r.prevTotal;
+  x.font = mono(26);
+  x.fillStyle = diff > 0 ? "#3ddc84" : diff < 0 ? "#f0a500" : "#96a898";
+  x.fillText(`${diff > 0 ? "↑" : diff < 0 ? "↓" : "→"} ${diff === 0 ? "same" : Math.abs(diff)} vs ${r.prevTotal} the week before`, 90, 375);
+  const facts = [`${r.active}/7 active days`];
+  if (r.bestCount) facts.push(`best day ${r.bestDay} (${r.bestCount})`);
+  if (r.goal > 0) facts.push(r.hit ? `weekly goal ✓` : `goal missed by ${r.goal - r.total}`);
+  x.fillStyle = "#96a898"; x.font = mono(22); x.fillText(facts.join("   ·   "), 90, 430);
+  if (r.records.length) { x.fillStyle = "#3ddc84"; x.fillText(`🏆 ${r.records.join("  ·  ")}`, 90, 475); }
+  x.fillStyle = "#f0f5f1"; x.font = 'italic 300 30px "DM Sans", sans-serif'; x.fillText(r.verdict, 90, 540);
+  const a = document.createElement("a");
+  a.href = c.toDataURL("image/png");
+  a.download = `eat-pray-apply-week-${r.monday}.png`;
+  a.click();
+}
+
 /* ── Weekly goal history ── */
 let historyRange = 6;
 
@@ -1585,6 +1811,8 @@ function render() {
   buildInsights();
   updateStreak();
   updateGoal();
+  updateNudge();
+  renderRecap();
   buildWeeklyGoalHistory();
   buildGrid();
   buildMonthlyChart();
@@ -1831,10 +2059,15 @@ const inpDate = document.getElementById("inp-date");
 inpDate.value = today();
 inpDate.max   = today();
 document.getElementById("inp-count").addEventListener("keydown", e => { if (e.key === "Enter") logApps(); });
-document.addEventListener("keydown", e => { if (e.key === "Escape") closeDayRings(); });
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  closeDayRings();
+  if (document.getElementById("recap-modal").classList.contains("visible")) closeRecapPopup();
+});
 
 load();
 render();
+maybeShowRecapPopup();
 tryRestoreFileHandle().then(() => render());
 </script>
 </body>

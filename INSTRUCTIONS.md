@@ -16,7 +16,15 @@
 
 In the **Log** tab, type a number next to Daily, Weekly, or Monthly and click **set**. Goals persist across sessions.
 
+Once you have two completed weeks, a **suggested** goal appears under each ring — 10% above your average over the last 4 weeks. Click it to fill the box, then hit **set**. Nothing changes until you do.
+
 Cross a goal and you get confetti — red for daily, yellow for weekly, green for monthly. It fires once, on the log that crosses the line, and only for today, this week, and this month. Backfilling an old week stays quiet. If your device has reduced motion turned on, you get the message without the confetti.
+
+## Weekly recap
+
+The first time you open the app in a new week, a recap of the week before pops up — total, change from the week before, active days, best day, weekly goal, daily goal hits, and any new records. Close it and it moves to the bottom of the **Log** tab, where it stays until next week's recap replaces it. Click **save image** to download it as a PNG. To pop it up again, hit **last week's recap** above the Last 8 weeks table on the **Stats** tab.
+
+If yesterday had no applications and today doesn't yet either, the Log tab shows a nudge above the log row. It disappears the moment you log.
 
 ## Reading the rings
 
