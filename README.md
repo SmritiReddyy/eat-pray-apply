@@ -16,7 +16,7 @@ A job application tracker that works like a GitHub contribution graph — except
 
 **Goal confetti** — cross your daily, weekly, or monthly goal and the screen throws a party in that ring's color. Bigger goal, bigger party. Hit all three in one log and it gets a little out of hand.
 
-**Contribution heatmap** — every day since you started, color-coded by volume. One glance tells you where you went dark and where you were unstoppable. Days that hit your daily goal get a green tick. Click any cell to see that day's rings or log for it.
+**Contribution heatmap** — four months at a time (three on a phone), one column per week, color-coded by volume. One glance tells you where you went dark and where you were unstoppable. Each week's total sits under its column, green if it hit the goal. Days that hit your daily goal get a green tick. Arrow back a month at a time, all the way to day one. Click any cell to see that day's rings or log for it.
 
 **Weekly goal history** — see every week as a hit or miss bar. Switch between a per-day breakdown of this week, last 6 weeks, 3 months, 6 months, or all time. The 1w view shows each day individually so you know exactly where the week fell apart.
 

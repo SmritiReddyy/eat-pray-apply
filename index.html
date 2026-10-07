@@ -135,11 +135,20 @@
 
     /* Grid */
     .grid-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
-    .month-block { margin-bottom: 20px; }
-    .month-block:last-child { margin-bottom: 0; }
-    .month-header { font-family: var(--font-mono); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; }
-    .day-row { display: flex; flex-wrap: wrap; gap: 4px; }
-    .day-cell { width: 28px; height: 28px; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 9px; cursor: pointer; position: relative; transition: transform 0.1s, outline 0.1s; outline: 1.5px solid transparent; }
+    /* Calendar heatmap: one column per week (Mon at top). JS sets --cols to the number of
+       week columns; cells shrink so they always fit the card (main is at most 860px wide). */
+    .grid-wrap { --cols: 19; --cal-gap: 4px; --cell: clamp(12px, calc((min(100vw, 908px) - 112px) / var(--cols) - var(--cal-gap)), 30px); }
+    .cal { display: flex; gap: var(--cal-gap); }
+    .cal-col { display: flex; flex-direction: column; gap: var(--cal-gap); }
+    .cal-month { height: 14px; width: var(--cell); font-family: var(--font-mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; white-space: nowrap; overflow: visible; }
+    .cal-dow { width: 14px; height: var(--cell); display: flex; align-items: center; font-family: var(--font-mono); font-size: 9px; color: var(--muted); }
+    .cal-total { height: 16px; width: var(--cell); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 10px; color: var(--muted); margin-top: 4px; white-space: nowrap; }
+    .cal-total.hit { color: var(--accent); }
+    .cal-total-label { width: 14px; justify-content: flex-start; font-size: 9px; }
+    .day-cell.outside { opacity: 0.4; }
+    .day-cell.future { opacity: 0.3; cursor: default; }
+    .day-cell.future:hover { transform: none; outline-color: transparent; }
+    .day-cell { width: var(--cell); height: var(--cell); border-radius: 3px; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 9px; cursor: pointer; position: relative; transition: transform 0.1s, outline 0.1s; outline: 1.5px solid transparent; }
     .day-cell:hover { transform: scale(1.2); z-index: 2; outline: 1.5px solid rgba(255,255,255,0.25); }
     .day-cell:active { transform: scale(0.95); }
     .day-cell.l0 { background: var(--l0); color: var(--muted); }
@@ -250,6 +259,11 @@
       header { flex-direction: column; gap: 4px; }
       .week-label { width: 70px; }
       .tab-btn { padding: 8px 12px 10px; font-size: 11px; }
+      .grid-wrap { --cal-gap: 3px; --cell: clamp(12px, calc((100vw - 92px) / var(--cols) - var(--cal-gap)), 30px); padding: 16px 12px; }
+      .day-cell { font-size: 0; }   /* too small for day numbers; tooltip still has the date */
+      .day-mark { width: 9px; height: 9px; font-size: 6px; top: -3px; right: -3px; }
+      .cal-total { font-size: 8px; }
+      .cal-tick { display: none; }   /* no room; the green color still marks a hit week */
     }
   </style>
 </head>
@@ -392,7 +406,17 @@
   <!-- ── Tab: History ── -->
   <div class="tab-pane" id="pane-history">
 
-  <div class="grid-wrap" id="grid-wrap"></div>
+  <div class="grid-wrap">
+    <div class="group-head" style="margin-bottom:14px">
+      <div class="section-title" style="margin-bottom:0">Calendar</div>
+      <div class="chart-pager">
+        <button class="range-pill" id="cal-older" onclick="pageCalendar(1)" title="Earlier months" aria-label="Earlier months">‹</button>
+        <span class="group-note" id="cal-range"></span>
+        <button class="range-pill" id="cal-newer" onclick="pageCalendar(-1)" title="Later months" aria-label="Later months">›</button>
+      </div>
+    </div>
+    <div class="cal" id="grid-wrap"></div>
+  </div>
 
   <div class="week-history">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
@@ -1651,48 +1675,68 @@ function updateStreak() {
 }
 
 /* ── Grid ── */
-function buildGrid() {
-  const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-  const now = new Date();
-  const months = [];
-  let my = 2026, mm = 2;
-  while (my < now.getFullYear() || (my === now.getFullYear() && mm <= now.getMonth())) {
-    months.push({y:my, m:mm});
-    mm++; if (mm > 11) { mm = 0; my++; }
-  }
-  const nextM = now.getMonth() + 1 > 11 ? 0 : now.getMonth() + 1;
-  const nextY = now.getMonth() + 1 > 11 ? now.getFullYear() + 1 : now.getFullYear();
-  months.push({y:nextY, m:nextM, viewOnly:true});
+// How many months back from the current month the calendar's last month is (0 = now)
+let calendarPage = 0;
+// Four months on a laptop; a phone gets three so the boxes stay tappable
+const calNarrow = window.matchMedia("(max-width: 600px)");
+calNarrow.addEventListener("change", () => buildGrid());
 
-  const todayKey = today();
-  let html = "";
-  months.forEach(({y,m,viewOnly}) => {
-    const days = new Date(y, m+1, 0).getDate();
-    const headerSuffix = viewOnly ? ' <span style="font-size:9px;color:var(--muted);margin-left:6px">view only</span>' : '';
-    html += `<div class="month-block"><div class="month-header">${monthNames[m]} ${y}${headerSuffix}</div><div class="day-row">`;
-    for (let d = 1; d <= days; d++) {
-      const date = new Date(y, m, d);
-      const key  = toKey(date);
+function pageCalendar(step) {
+  calendarPage = Math.max(0, calendarPage + step);
+  buildGrid();
+}
+
+function buildGrid() {
+  const t = today();
+  const [ty, tm] = t.split("-").map(Number);
+  const months = calNarrow.matches ? 3 : 4;
+  const lastMonth = new Date(ty, tm - 1 - calendarPage, 1);
+  const startKey = fmtDate(new Date(lastMonth.getFullYear(), lastMonth.getMonth() - (months - 1), 1));
+  const endKey = fmtDate(new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0));
+  const first = firstLogKey();
+  document.getElementById("cal-older").disabled = !first || startKey.slice(0, 7) <= first.slice(0, 7);
+  document.getElementById("cal-newer").disabled = calendarPage === 0;
+  const monthLabel = (k, withYear) => parseDate(k).toLocaleDateString("en-US", withYear ? { month: "short", year: "numeric" } : { month: "short" });
+  setText("cal-range", startKey.slice(0, 4) === endKey.slice(0, 4)
+    ? `${monthLabel(startKey)} – ${monthLabel(endKey, true)}`
+    : `${monthLabel(startKey, true)} – ${monthLabel(endKey, true)}`);
+
+  let html = `<div class="cal-col"><div class="cal-month"></div>${["M", "T", "W", "T", "F", "S", "S"].map(d => `<div class="cal-dow">${d}</div>`).join("")}<div class="cal-total cal-total-label">wk</div></div>`;
+  for (let mon = getWeekStart(startKey); mon <= endKey; mon = addDays(mon, 7)) {
+    const days = Array.from({ length: 7 }, (_, i) => addDays(mon, i));
+    // Month name above the column that holds the 1st
+    const firstOfMonth = days.find(k => k.endsWith("-01") && k >= startKey && k <= endKey);
+    let col = `<div class="cal-col"><div class="cal-month">${firstOfMonth ? monthLabel(firstOfMonth) : ""}</div>`;
+    days.forEach(key => {
       const count = data[key] || 0;
-      const lvl   = getLevel(count);
-      const isToday = key === todayKey ? " today" : "";
-      const dayName = date.toLocaleDateString("en-US",{weekday:"short"});
-      // Daily-goal marker: only for past/today days that had a daily goal in effect.
-      // Green tick when the goal was met; nothing otherwise.
-      const dGoal = (!viewOnly && key <= todayKey) ? (goalOn(key).daily || 0) : 0;
+      const d = parseDate(key);
+      const isFuture = key > t;
+      const outside = key < startKey || key > endKey;
+      const cls = `day-cell ${getLevel(count)}${key === t ? " today" : ""}${isFuture ? " future" : outside ? " outside" : ""}`;
+      // Daily-goal marker: green tick on past/today days that met the goal in effect then
+      const dGoal = !isFuture ? (goalOn(key).daily || 0) : 0;
       let mark = "", goalTip = "";
       if (dGoal > 0) {
         if (count >= dGoal) { mark = `<div class="day-mark hit">✓</div>`; goalTip = ` · goal ${dGoal} ✓`; }
-        else { goalTip = count > 0 ? ` · ${count}/${dGoal} goal` : ` · goal ${dGoal}`; }
+        else goalTip = count > 0 ? ` · ${count}/${dGoal} goal` : ` · goal ${dGoal}`;
       }
-      const tipText = (count > 0 ? `${dayName} ${d}: ${count} app${count!==1?"s":""}` : `${dayName} ${d}`) + goalTip;
-      const cellStyle = viewOnly ? ' style="cursor:default;opacity:0.45"' : '';
-      const cellClick = viewOnly ? '' : `onclick="showDayRings('${key}')"`;
-      html += `<div class="day-cell ${lvl}${isToday}" ${cellClick}${cellStyle} data-key="${key}">${d}<div class="tip">${tipText}</div>${mark}</div>`;
+      const label = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+      const tipText = (count > 0 ? `${label}: ${count} app${count !== 1 ? "s" : ""}` : label) + goalTip;
+      const click = isFuture ? "" : `onclick="showDayRings('${key}')"`;
+      col += `<div class="${cls}" ${click} data-key="${key}">${d.getDate()}<div class="tip">${tipText}</div>${mark}</div>`;
+    });
+    // Week total under each column; green with ✓ when it met that week's goal
+    if (mon <= t) {
+      const w = weekStats(mon);
+      col += `<div class="cal-total${w.hit ? " hit" : ""}" title="Week of ${shortDate(mon)}: ${w.total} apps${w.goal ? ` · goal ${w.goal}${w.hit ? " ✓" : ""}` : ""}">${w.total || "·"}${w.hit ? `<span class="cal-tick">✓</span>` : ""}</div>`;
+    } else {
+      col += `<div class="cal-total"></div>`;
     }
-    html += `</div></div>`;
-  });
-  document.getElementById("grid-wrap").innerHTML = html;
+    html += col + `</div>`;
+  }
+  const cal = document.getElementById("grid-wrap");
+  cal.innerHTML = html;
+  cal.parentElement.style.setProperty("--cols", cal.children.length - 1);
 }
 
 /* ── Monthly chart ── */
