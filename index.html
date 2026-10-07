@@ -1611,19 +1611,25 @@ function updateStreak() {
   const { current, longest } = calcStreaks();
   const isActive = current > 0;
 
-  // week-over-week trend
-  const ws = getWeekStart();
-  const lastWs = parseDate(ws);
-  lastWs.setDate(lastWs.getDate() - 7);
-  const thisWeekTotal = getWeekTotal(ws);
-  const lastWeekTotal = getWeekTotal(fmtDate(lastWs));
+  // Week-over-week: this week so far vs the same point last week (Mon–same weekday),
+  // so a Tuesday isn't measured against a full week. Sunday compares full weeks.
+  const t = today();
+  const ws = getWeekStart(t);
+  const dayIdx = daysBetween(ws, t);
+  const lastWs = addDays(ws, -7);
+  const thisSoFar = sumRange(ws, t);
+  const lastSamePoint = sumRange(lastWs, addDays(lastWs, dayIdx));
+  const vsLabel = dayIdx === 6 ? `vs ${lastSamePoint} last week`
+    : `vs ${lastSamePoint} by ${parseDate(t).toLocaleDateString("en-US", { weekday: "short" })} last week`;
   let trendHtml = "";
-  if (lastWeekTotal > 0) {
-    const diff = thisWeekTotal - lastWeekTotal;
-    const pct = Math.round(Math.abs(diff) / lastWeekTotal * 100);
-    if (diff > 0)      trendHtml = `<div style="width:1px;height:20px;background:var(--border);margin:0 4px"></div><div class="streak-item"><span style="color:var(--accent);font-family:var(--font-mono);font-size:12px">↑ ${pct}% vs last week</span></div>`;
-    else if (diff < 0) trendHtml = `<div style="width:1px;height:20px;background:var(--border);margin:0 4px"></div><div class="streak-item"><span style="color:#f0a500;font-family:var(--font-mono);font-size:12px">↓ ${pct}% vs last week</span></div>`;
-    else               trendHtml = `<div style="width:1px;height:20px;background:var(--border);margin:0 4px"></div><div class="streak-item"><span style="color:var(--muted);font-family:var(--font-mono);font-size:12px">= same as last week</span></div>`;
+  if (thisSoFar > 0 || lastSamePoint > 0) {
+    const diff = thisSoFar - lastSamePoint;
+    // A percentage of zero means nothing, so show the raw difference when last week was empty
+    const amount = lastSamePoint > 0 ? `${Math.round(Math.abs(diff) / lastSamePoint * 100)}%` : Math.abs(diff);
+    const [color, text] = diff > 0 ? ["var(--accent)", `↑ ${amount} ${vsLabel}`]
+      : diff < 0 ? ["#f0a500", `↓ ${amount} ${vsLabel}`]
+      : ["var(--muted)", `= same ${vsLabel}`];
+    trendHtml = `<div style="width:1px;height:20px;background:var(--border);margin:0 4px"></div><div class="streak-item"><span style="color:${color};font-family:var(--font-mono);font-size:12px">${text}</span></div>`;
   }
   document.getElementById("streak-bar").innerHTML = `
     <div class="streak-item">
