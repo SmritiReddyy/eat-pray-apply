@@ -860,6 +860,38 @@ function timeLeftMsg(type, now) {
   }
 }
 
+// Per-day pace for the weekly/monthly goal, counting today. Today's share is fixed from
+// what was left this morning, split evenly over the days left including today. Until
+// today's share is done, the line counts down what today still needs; after that it
+// shows the pace for the remaining days, which drops as you log past today's share.
+// Always rounds up so following it never falls short.
+// Returns { text, status }: status is the ahead/behind label (with its color class) once
+// today's share is done, so the caller can color just that part.
+function paceMsg(type, target, current, now) {
+  const daysAfter = type === "weekly"
+    ? 6 - (now.getDay() + 6) % 7
+    : new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate();
+  const todayCount = data[today()] || 0;
+  const left = target - current;
+  if (daysAfter === 0) return { text: `${left} to go today`, status: null };
+  const share = Math.ceil((target - (current - todayCount)) / (daysAfter + 1));
+  if (todayCount < share) {
+    return { text: `${daysAfter + 1}d left incl. today · ${share}/day · ${share - todayCount} more today`, status: null };
+  }
+  const rest = type === "weekly"
+    ? (daysAfter === 1 ? "Sun" : `${WEEKDAY_NAMES[7 - daysAfter]}–Sun`)
+    : `for ${daysAfter}d`;
+  // Ahead/behind the goal's even schedule: how many you'd have by the end of today if the
+  // goal were spread evenly over the week or month
+  const periodDays = type === "weekly" ? 7 : new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const expected = Math.round(target * (periodDays - daysAfter) / periodDays);
+  const diff = current - expected;
+  const status = diff > 0 ? { label: `${diff} ahead`, cls: "up" }
+    : diff < 0 ? { label: `${-diff} behind`, cls: "down" }
+    : { label: "on track", cls: "" };
+  return { text: `${status.label} · ${Math.ceil(left / daysAfter)}/day ${rest}`, status };
+}
+
 function updateGoal() {
   const now = new Date();
   const dailyCurrent   = data[today()] || 0;
@@ -880,31 +912,27 @@ function updateGoal() {
     document.getElementById("rleg-"+type+"-nums").textContent = `${current} / ${target || "—"}`;
     document.getElementById("rleg-"+type+"-pct").textContent  = target > 0 ? pct+"%" : "";
 
-    let msg = "";
+    let msg = "", statusHtml = null;
     if (!target) { msg = "no target set"; }
     else if (pct >= 100) { msg = "🎉 goal hit!"; }
     else {
       const left = target - current;
       const tl   = timeLeftMsg(type, now);
-      let behind = "";
       if (type === "daily") {
         const h = 23 - now.getHours(), m = 59 - now.getMinutes();
-        if (h > 0) behind = ` · ${(left/(h+m/60)).toFixed(1)}/hr`;
-      } else if (type === "weekly") {
-        const dow = (now.getDay()+6)%7, d = 6-dow;
-        if (d > 0) behind = ` · ${Math.ceil(left/(d+1))}/day`;
+        msg = `${left} left · ${tl}${h > 0 ? ` · ${(left/(h+m/60)).toFixed(1)}/hr` : ""}`;
       } else {
-        const last = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
-        const d = last - now.getDate();
-        if (d > 0) behind = ` · ${Math.ceil(left/(d+1))}/day`;
+        const pace = paceMsg(type, target, current, now);
+        msg = `${left} left · ${pace.text}`;
+        if (pace.status) statusHtml = [pace.status.label, `<span class="${pace.status.cls}">${pace.status.label}</span>`];
       }
-      msg = `${left} left · ${tl}${behind}`;
       if (type === "weekly" && current > 0) {
         const proj = Math.round(current / (((now.getDay() + 6) % 7) + 1) * 7);
         msg += ` · ~${proj} by Sun`;
       }
     }
-    document.getElementById("rleg-"+type+"-msg").textContent = msg;
+    // Only numbers and fixed words go into msg, so it is safe to build as HTML
+    document.getElementById("rleg-"+type+"-msg").innerHTML = statusHtml ? msg.replace(statusHtml[0], statusHtml[1]) : msg;
     updateRingTipData(type, current, target, msg);
   });
   updateGoalSuggestions();
