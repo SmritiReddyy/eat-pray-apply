@@ -74,16 +74,20 @@
 
     /* Activity rings */
     :root {
-      --ring-daily: #ff453a;
-      --ring-weekly: #ffd60a;
-      --ring-monthly: #3ddc84;
+      --ring-daily: #4fe8e1;
+      --ring-weekly: #c4f23a;
+      --ring-monthly: #ff3d7f;
     }
     .rings-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
     .rings-svg-wrap { position: relative; flex-shrink: 0; }
     .rings-svg-wrap svg { display: block; }
     .ring-track { fill: none; stroke-linecap: round; }
-    .ring-fill  { fill: none; stroke-linecap: round; transform-origin: 110px 110px; transform: rotate(-90deg); transition: stroke-dashoffset 0.6s cubic-bezier(.4,0,.2,1); }
-    .ring-hover { fill: none; stroke: transparent; stroke-width: 28; cursor: crosshair; transform-origin: 110px 110px; transform: rotate(-90deg); }
+    /* Ring progress is animated frame by frame in JS (animateRing), so the rounded end
+       moves with the ring instead of snapping on at the end */
+    .ring-fill  { fill: none; stroke-linecap: round; transform-origin: 110px 110px; transform: rotate(-90deg); }
+    /* Second lap past 100%: butt start so it lines up with 12 o'clock; its end is the cap */
+    .ring-lap   { fill: none; stroke-linecap: butt; transform-origin: 110px 110px; transform: rotate(-90deg); }
+    .ring-hover { fill: none; stroke: transparent; stroke-width: 24; cursor: crosshair; transform-origin: 110px 110px; transform: rotate(-90deg); }
     .ring-tooltip { position: absolute; background: #1e2220; border: 1px solid var(--border2); border-radius: 6px; padding: 8px 12px; font-family: var(--font-mono); font-size: 12px; color: var(--text); pointer-events: none; white-space: nowrap; opacity: 0; transition: opacity 0.15s; z-index: 20; top: 50%; transform: translateY(-50%); left: calc(100% + 12px); }
     .ring-tooltip.visible { opacity: 1; }
     .ring-tooltip-val { font-size: 20px; font-weight: 500; }
@@ -290,30 +294,11 @@
   <div class="rings-wrap">
     <div class="rings-svg-wrap">
       <svg width="220" height="220" viewBox="0 0 220 220">
-        <defs>
-          <filter id="tip-shadow" x="-100%" y="-100%" width="300%" height="300%">
-            <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="rgba(0,0,0,0.9)"/>
-          </filter>
-        </defs>
-        <!-- monthly track + fill (outer, r=95, C≈597) -->
-        <circle class="ring-track" cx="110" cy="110" r="95" stroke="#3ddc8422" stroke-width="16"/>
-        <circle class="ring-fill"  cx="110" cy="110" r="95" stroke="#3ddc84" stroke-width="16" id="ring-monthly" stroke-dasharray="597" stroke-dashoffset="597"/>
-        <!-- weekly track + fill (middle, r=72, C≈452) -->
-        <circle class="ring-track" cx="110" cy="110" r="72" stroke="#ffd60a22" stroke-width="16"/>
-        <circle class="ring-fill"  cx="110" cy="110" r="72" stroke="#ffd60a"  stroke-width="16" id="ring-weekly"  stroke-dasharray="452" stroke-dashoffset="452"/>
-        <!-- daily track + fill (inner, r=49, C≈308) -->
-        <circle class="ring-track" cx="110" cy="110" r="49" stroke="#ff453a22" stroke-width="16"/>
-        <circle class="ring-fill"  cx="110" cy="110" r="49" stroke="#ff453a"  stroke-width="16" id="ring-daily"   stroke-dasharray="308" stroke-dashoffset="308"/>
-        <!-- overflow markers: bright dot + white shimmer at the overflow position when ring > 100% -->
-        <circle id="ring-monthly-tip"   r="9"   fill="#44e890" visibility="hidden" filter="url(#tip-shadow)"/>
-        <circle id="ring-weekly-tip"    r="9"   fill="#ffe033" visibility="hidden" filter="url(#tip-shadow)"/>
-        <circle id="ring-daily-tip"     r="9"   fill="#ff6259" visibility="hidden" filter="url(#tip-shadow)"/>
-        <circle id="ring-monthly-shine" r="3.5" fill="rgba(255,255,255,0.45)" visibility="hidden"/>
-        <circle id="ring-weekly-shine"  r="3.5" fill="rgba(255,255,255,0.45)" visibility="hidden"/>
-        <circle id="ring-daily-shine"   r="3.5" fill="rgba(255,255,255,0.45)" visibility="hidden"/>
+        <!-- rings are drawn by drawRingLayers() -->
+        <g id="ring-layers"></g>
         <!-- hover zones -->
-        <circle class="ring-hover" cx="110" cy="110" r="95" onmouseenter="showRingTip('monthly')" onmouseleave="hideRingTip()"/>
-        <circle class="ring-hover" cx="110" cy="110" r="72" onmouseenter="showRingTip('weekly')"  onmouseleave="hideRingTip()"/>
+        <circle class="ring-hover" cx="110" cy="110" r="97" onmouseenter="showRingTip('monthly')" onmouseleave="hideRingTip()"/>
+        <circle class="ring-hover" cx="110" cy="110" r="73" onmouseenter="showRingTip('weekly')"  onmouseleave="hideRingTip()"/>
         <circle class="ring-hover" cx="110" cy="110" r="49" onmouseenter="showRingTip('daily')"   onmouseleave="hideRingTip()"/>
         <!-- center text -->
         <text x="110" y="104" text-anchor="middle" font-family="'DM Mono',monospace" font-size="11" fill="#96a898" letter-spacing="1">TODAY</text>
@@ -329,9 +314,9 @@
       <!-- daily -->
       <div class="ring-leg">
         <div class="ring-leg-row">
-          <div class="ring-dot" style="background:#ff453a"></div>
+          <div class="ring-dot" style="background:#4fe8e1"></div>
           <span class="ring-leg-label">Daily</span>
-          <span class="ring-leg-nums" style="color:#ff453a" id="rleg-daily-nums">0 / —</span>
+          <span class="ring-leg-nums" style="color:#4fe8e1" id="rleg-daily-nums">0 / —</span>
           <span class="ring-leg-pct" id="rleg-daily-pct"></span>
           <div class="ring-inputs">
             <input type="number" class="goal-input" id="goal-input-daily" min="1" max="999" placeholder="—" />
@@ -344,9 +329,9 @@
       <!-- weekly -->
       <div class="ring-leg">
         <div class="ring-leg-row">
-          <div class="ring-dot" style="background:#ffd60a"></div>
+          <div class="ring-dot" style="background:#c4f23a"></div>
           <span class="ring-leg-label">Weekly</span>
-          <span class="ring-leg-nums" style="color:#ffd60a" id="rleg-weekly-nums">0 / —</span>
+          <span class="ring-leg-nums" style="color:#c4f23a" id="rleg-weekly-nums">0 / —</span>
           <span class="ring-leg-pct" id="rleg-weekly-pct"></span>
           <div class="ring-inputs">
             <input type="number" class="goal-input" id="goal-input-weekly" min="1" max="999" placeholder="—" />
@@ -359,9 +344,9 @@
       <!-- monthly -->
       <div class="ring-leg">
         <div class="ring-leg-row">
-          <div class="ring-dot" style="background:#3ddc84"></div>
+          <div class="ring-dot" style="background:#ff3d7f"></div>
           <span class="ring-leg-label">Monthly</span>
-          <span class="ring-leg-nums" style="color:#3ddc84" id="rleg-monthly-nums">0 / —</span>
+          <span class="ring-leg-nums" style="color:#ff3d7f" id="rleg-monthly-nums">0 / —</span>
           <span class="ring-leg-pct" id="rleg-monthly-pct"></span>
           <div class="ring-inputs">
             <input type="number" class="goal-input" id="goal-input-monthly" min="1" max="999" placeholder="—" />
@@ -557,12 +542,7 @@
     <div class="day-modal-body">
       <div class="rings-svg-wrap">
         <svg width="200" height="200" viewBox="0 0 220 220">
-          <circle class="ring-track" cx="110" cy="110" r="95" stroke="#3ddc8422" stroke-width="16"/>
-          <circle class="ring-fill"  cx="110" cy="110" r="95" stroke="#3ddc84" stroke-width="16" id="dm-ring-monthly" stroke-dasharray="597" stroke-dashoffset="597"/>
-          <circle class="ring-track" cx="110" cy="110" r="72" stroke="#ffd60a22" stroke-width="16"/>
-          <circle class="ring-fill"  cx="110" cy="110" r="72" stroke="#ffd60a" stroke-width="16" id="dm-ring-weekly" stroke-dasharray="452" stroke-dashoffset="452"/>
-          <circle class="ring-track" cx="110" cy="110" r="49" stroke="#ff453a22" stroke-width="16"/>
-          <circle class="ring-fill"  cx="110" cy="110" r="49" stroke="#ff453a" stroke-width="16" id="dm-ring-daily" stroke-dasharray="308" stroke-dashoffset="308"/>
+          <g id="dm-ring-layers"></g>
           <text x="110" y="104" text-anchor="middle" font-family="'DM Mono',monospace" font-size="11" fill="#96a898" letter-spacing="1">APPS</text>
           <text x="110" y="124" text-anchor="middle" font-family="'DM Mono',monospace" font-size="22" font-weight="500" fill="#f0f5f1" id="dm-center-val">0</text>
         </svg>
@@ -808,7 +788,55 @@ function getWeekStart(d) {
 }
 
 /* ── Goal / Rings ── */
-const RING_C = { daily: 308, weekly: 452, monthly: 597 };
+// Apple Fitness-style rings: thick, nearly touching, each a two-tone gradient that runs
+// darker at the start (12 o'clock) to brighter at the end. SVG can't draw a gradient along
+// a circle, so each ring is two half-circle arcs with linear gradients, revealed by a
+// masked stroke whose dashoffset is the progress (so it still animates).
+const RING_STYLE = {
+  monthly: { r: 97, from: "#e8174f", to: "#ff5c95", text: "#ff3d7f" },
+  weekly:  { r: 73, from: "#8fd400", to: "#dcff3d", text: "#c4f23a" },
+  daily:   { r: 49, from: "#0fcfc6", to: "#74f8f1", text: "#4fe8e1" }
+};
+const RING_W = 22;
+const RING_C = Object.fromEntries(Object.entries(RING_STYLE).map(([k, st]) => [k, 2 * Math.PI * st.r]));
+
+function mixHex(a, b) {
+  const ch = (h, i) => parseInt(h.slice(1 + i * 2, 3 + i * 2), 16);
+  return "#" + [0, 1, 2].map(i => Math.round((ch(a, i) + ch(b, i)) / 2).toString(16).padStart(2, "0")).join("");
+}
+
+// Fills <g id="{prefix}-layers"> with tracks, gradient rings, start caps and overflow tips
+function drawRingLayers(prefix) {
+  const pt = (r, deg) => { const a = (deg - 90) * Math.PI / 180; return `${(110 + r * Math.cos(a)).toFixed(2)} ${(110 + r * Math.sin(a)).toFixed(2)}`; };
+  document.getElementById(prefix + "-layers").innerHTML = ["monthly", "weekly", "daily"].map(type => {
+    const { r, from, to } = RING_STYLE[type], mid = mixHex(from, to), C = RING_C[type], id = `${prefix}-${type}`;
+    const arc = `fill="none" stroke-width="${RING_W}"`;
+    return `
+      <defs>
+        <linearGradient id="${id}-ga" gradientUnits="userSpaceOnUse" x1="110" y1="${110 - r}" x2="110" y2="${110 + r}"><stop offset="0" stop-color="${from}"/><stop offset="1" stop-color="${mid}"/></linearGradient>
+        <linearGradient id="${id}-gb" gradientUnits="userSpaceOnUse" x1="110" y1="${110 + r}" x2="110" y2="${110 - r}"><stop offset="0" stop-color="${mid}"/><stop offset="1" stop-color="${to}"/></linearGradient>
+        <mask id="${id}-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="220" height="220">
+          <circle class="ring-fill" id="${id}" cx="110" cy="110" r="${r}" stroke="#fff" stroke-width="${RING_W}" stroke-dasharray="${C}" stroke-dashoffset="${C}" visibility="hidden"/>
+        </mask>
+      </defs>
+      <circle class="ring-track" cx="110" cy="110" r="${r}" stroke="${from}38" stroke-width="${RING_W}"/>
+      <g mask="url(#${id}-mask)">
+        <path d="M 110 ${110 - r} A ${r} ${r} 0 0 1 ${pt(r, 181)}" stroke="url(#${id}-ga)" ${arc}/>
+        <path d="M 110 ${110 + r} A ${r} ${r} 0 0 1 110 ${110 - r}" stroke="url(#${id}-gb)" ${arc}/>
+        <circle id="${id}-start" cx="110" cy="${110 - r}" r="${RING_W / 2}" fill="${from}" visibility="hidden"/>
+      </g>
+      <circle class="ring-lap" id="${id}-lap" cx="110" cy="110" r="${r}" stroke="${to}" stroke-width="${RING_W}" stroke-dasharray="${C}" stroke-dashoffset="${C}" visibility="hidden"/>
+      <defs>
+        <filter id="${id}-shadow" x="-100%" y="-100%" width="300%" height="300%">
+          <feDropShadow id="${id}-shadow-drop" dx="0" dy="0" stdDeviation="2.5" flood-color="rgba(0,0,0,0.75)"/>
+        </filter>
+      </defs>
+      <g class="ring-end" id="${id}-end" opacity="0">
+        <circle id="${id}-end-shade" r="${RING_W / 2}" filter="url(#${id}-shadow)"/>
+        <path id="${id}-end-cap" fill="none" stroke-width="${RING_W}" stroke-linecap="round"/>
+      </g>`;
+  }).join("");
+}
 
 function saveGoal(type) {
   const v = parseInt(document.getElementById("goal-input-"+type).value);
@@ -823,27 +851,79 @@ function saveGoal(type) {
   showToast(type + " goal saved");
 }
 
-function setRing(type, pct) {
-  const c = RING_C[type];
-  const offset = c - Math.min(1, pct / 100) * c;
-  document.getElementById("ring-"+type).style.strokeDashoffset = offset;
-  const RING_R = { daily: 49, weekly: 72, monthly: 95 };
-  const tip   = document.getElementById("ring-"+type+"-tip");
-  const shine = document.getElementById("ring-"+type+"-shine");
-  if (pct >= 100) {
-    // Position overflow marker dot at the overflow angle (how far past 100%)
-    const r = RING_R[type];
-    const overflowDeg = (pct % 100) / 100 * 360;
-    const angle = (-90 + overflowDeg) * Math.PI / 180;
-    const tx = 110 + r * Math.cos(angle);
-    const ty = 110 + r * Math.sin(angle);
-    if (tip)   { tip.setAttribute("cx", tx); tip.setAttribute("cy", ty); tip.setAttribute("visibility", "visible"); }
-    if (shine) { shine.setAttribute("cx", tx - 2.5); shine.setAttribute("cy", ty - 2.5); shine.setAttribute("visibility", "visible"); }
-  } else {
-    if (tip)   tip.setAttribute("visibility", "hidden");
-    if (shine) shine.setAttribute("visibility", "hidden");
+// Progress for one ring in the main view ("ring") or the day pop-up ("dm-ring").
+// Ring gradient color at an angle (degrees clockwise from 12 o'clock), matching the two
+// half-circle gradients in drawRingLayers
+function ringColorAt(type, deg) {
+  const { from, to } = RING_STYLE[type], mid = mixHex(from, to);
+  const c = Math.cos(deg * Math.PI / 180);
+  const lerp = (a, b, t) => "#" + [0, 1, 2].map(i => {
+    const x = parseInt(a.slice(1 + i * 2, 3 + i * 2), 16), y = parseInt(b.slice(1 + i * 2, 3 + i * 2), 16);
+    return Math.round(x + (y - x) * t).toString(16).padStart(2, "0");
+  }).join("");
+  return deg <= 180 ? lerp(from, mid, (1 - c) / 2) : lerp(mid, to, (1 + c) / 2);
+}
+
+// Draws one ring at a given percentage, in the main view ("ring") or the day pop-up
+// ("dm-ring"). Past 100% a second lap is drawn over the first, like Apple Fitness. From 85%
+// the ring's rounded end casts a shadow ahead of it onto the ring below — a half-circle
+// overlap rather than a separate dot.
+function drawRing(prefix, type, pct) {
+  const C = RING_C[type], r = RING_STYLE[type].r, id = `${prefix}-${type}`;
+  const fill = document.getElementById(id);
+  fill.style.strokeDashoffset = C - Math.min(1, pct / 100) * C;
+  fill.setAttribute("visibility", pct > 0 ? "visible" : "hidden");   // a 0-length round cap would still draw a dot
+  // The start cap keeps the start color until the ring is full (then the second lap covers it)
+  document.getElementById(id + "-start").setAttribute("visibility", pct > 0 && pct < 100 ? "visible" : "hidden");
+
+  const lapPct = pct > 100 ? Math.min(pct - 100, 99.5) : 0;
+  const lap = document.getElementById(id + "-lap");
+  lap.style.strokeDashoffset = C - lapPct / 100 * C;
+  lap.setAttribute("visibility", lapPct > 0 ? "visible" : "hidden");
+
+  const end = document.getElementById(id + "-end");
+  if (pct < 85) { end.setAttribute("opacity", "0"); return; }
+  {
+    // At exactly 100% the end is the close of the first lap (360°), not its start
+    const deg = lapPct > 0 ? (lapPct / 100) * 360 : Math.min(pct, 100) / 100 * 360;
+    const color = pct >= 100 ? RING_STYLE[type].to : ringColorAt(type, deg);
+    const at = d => { const a = (d - 90) * Math.PI / 180; return [110 + r * Math.cos(a), 110 + r * Math.sin(a)]; };
+    const [x, y] = at(deg);
+    const [bx, by] = at(deg - (RING_W / 2 + 2) / r * 180 / Math.PI);   // a short segment ending at the cap
+    const shade = document.getElementById(id + "-end-shade");
+    shade.setAttribute("cx", x); shade.setAttribute("cy", y); shade.setAttribute("fill", color);
+    const cap = document.getElementById(id + "-end-cap");
+    cap.setAttribute("d", `M ${bx} ${by} A ${r} ${r} 0 0 1 ${x} ${y}`);
+    cap.setAttribute("stroke", color);
+    // Cast the shadow forward, in the direction the ring travels
+    const a = deg * Math.PI / 180;
+    const drop = document.getElementById(id + "-shadow-drop");
+    drop.setAttribute("dx", (2.5 * Math.cos(a)).toFixed(2));
+    drop.setAttribute("dy", (2.5 * Math.sin(a)).toFixed(2));
+    end.setAttribute("opacity", "1");
   }
 }
+
+// Animates a ring from what it currently shows to `pct`, redrawing every frame so the
+// rounded end travels with it. Instant when the device asks for reduced motion.
+const ringShown = {}, ringFrames = {};
+function setRingFor(prefix, type, pct) {
+  const id = `${prefix}-${type}`;
+  const fromPct = ringShown[id] ?? 0;
+  const duration = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 600;
+  cancelAnimationFrame(ringFrames[id]);
+  let start = null;
+  const step = now => {
+    if (start === null) start = now;   // first frame's own timestamp, so t never goes negative
+    const t = duration ? Math.min(1, (now - start) / duration) : 1;
+    const eased = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    ringShown[id] = fromPct + (pct - fromPct) * eased;
+    drawRing(prefix, type, ringShown[id]);
+    if (t < 1) ringFrames[id] = requestAnimationFrame(step);
+  };
+  ringFrames[id] = requestAnimationFrame(step);
+}
+function setRing(type, pct) { setRingFor("ring", type, pct); }
 
 function timeLeftMsg(type, now) {
   if (type === "daily") {
@@ -1914,7 +1994,7 @@ function showToast(msg, ms = 2000) {
 /* ── Goal confetti ── */
 // Fires only for the current periods (today, this week, this month), and only on the
 // log that crosses the goal, so backfilling old days or logging past a goal stays quiet.
-const CONFETTI_COLORS = { daily: ["#ff453a", "#ff6259"], weekly: ["#ffd60a", "#ffe033"], monthly: ["#3ddc84", "#7fffb3"] };
+const CONFETTI_COLORS = { daily: ["#0fcfc6", "#74f8f1"], weekly: ["#8fd400", "#dcff3d"], monthly: ["#e8174f", "#ff5c95"] };
 const CONFETTI_COUNT  = { daily: 90, weekly: 180, monthly: 320 };
 
 function currentTotals() {
@@ -2046,7 +2126,7 @@ function updateRingTipData(type, current, target, msg) {
 }
 function showRingTip(type) {
   const d = _ringTipData[type] || {};
-  const colors = { daily: '#ff453a', weekly: '#ffd60a', monthly: '#3ddc84' };
+  const colors = { daily: RING_STYLE.daily.text, weekly: RING_STYLE.weekly.text, monthly: RING_STYLE.monthly.text };
   const tip = document.getElementById('ring-tooltip');
   document.getElementById('rtt-label').textContent = type;
   const val = document.getElementById('rtt-val');
@@ -2079,15 +2159,13 @@ function showDayRings(key) {
   const monthCount = Object.entries(data).filter(([k,v]) => k.startsWith(prefix) && v > 0 && k <= key).reduce((a,[,v])=>a+v, 0);
 
   const rows = [
-    ["daily",   dailyCount,  g.daily   || 0, "#ff453a"],
-    ["weekly",  weekCount,   g.weekly  || 0, "#ffd60a"],
-    ["monthly", monthCount,  g.monthly || 0, "#3ddc84"]
+    ["daily",   dailyCount,  g.daily   || 0, RING_STYLE.daily.text],
+    ["weekly",  weekCount,   g.weekly  || 0, RING_STYLE.weekly.text],
+    ["monthly", monthCount,  g.monthly || 0, RING_STYLE.monthly.text]
   ];
 
   rows.forEach(([type, current, target]) => {
-    const c = RING_C[type];
-    const rawPct = target > 0 ? current / target * 100 : 0;
-    document.getElementById("dm-ring-"+type).style.strokeDashoffset = c - Math.min(1, rawPct/100) * c;
+    setRingFor("dm-ring", type, target > 0 ? current / target * 100 : 0);
   });
   document.getElementById("dm-center-val").textContent = dailyCount;
 
@@ -2143,6 +2221,8 @@ document.addEventListener("keydown", e => {
   if (document.getElementById("recap-modal").classList.contains("visible")) closeRecapPopup();
 });
 
+drawRingLayers("ring");
+drawRingLayers("dm-ring");
 load();
 render();
 maybeShowRecapPopup();

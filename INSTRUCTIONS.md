@@ -18,7 +18,7 @@ In the **Log** tab, type a number next to Daily, Weekly, or Monthly and click **
 
 Once you have two completed weeks, a **suggested** goal appears under each ring — 10% above your average over the last 4 weeks. Click it to fill the box, then hit **set**. Nothing changes until you do.
 
-Cross a goal and you get confetti — red for daily, yellow for weekly, green for monthly. It fires once, on the log that crosses the line, and only for today, this week, and this month. Backfilling an old week stays quiet. If your device has reduced motion turned on, you get the message without the confetti.
+Cross a goal and you get confetti — cyan for daily, lime for weekly, pink for monthly. It fires once, on the log that crosses the line, and only for today, this week, and this month. Backfilling an old week stays quiet. If your device has reduced motion turned on, you get the message without the confetti.
 
 ## Weekly recap
 
@@ -28,7 +28,7 @@ If yesterday had no applications and today doesn't yet either, the Log tab shows
 
 ## Reading the rings
 
-Rings fill clockwise as you progress. Inner = daily (red), middle = weekly (yellow), outer = monthly (green). Hover a ring to see current count, goal, and time remaining.
+Rings fill clockwise as you progress. Inner = daily (cyan), middle = weekly (lime), outer = monthly (pink). Hover a ring to see current count, goal, and time remaining.
 
 ## Weekly goal history
 
