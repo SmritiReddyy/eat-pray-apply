@@ -6,11 +6,19 @@ A job application tracker that works like a GitHub contribution graph — except
 
 **Live:** [smritireddyy.github.io/eat-pray-apply](https://smritireddyy.github.io/eat-pray-apply/)
 
+<p align="center">
+  <img src="screenshots/heatmap.png" alt="Contribution heatmap of daily applications from July to October" width="100%" />
+</p>
+
 ---
 
 ## What it does
 
 **Activity rings** — three concentric rings (daily / weekly / monthly), Apple Fitness-style. They fill as you log. Hover any ring and it tells you exactly where you stand and how many you need per hour or day to still hit the goal.
+
+<p align="center">
+  <img src="screenshots/activity-rings.png" alt="Activity rings showing daily, weekly, and monthly progress" width="480" />
+</p>
 
 **Suggested goals** — under each ring, a goal 10% above what you've actually been doing lately. Click it to fill the box. Ambitious, not delusional.
 
